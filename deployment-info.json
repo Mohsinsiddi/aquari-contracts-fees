@@ -1,0 +1,45 @@
+{
+  "network": "localhost",
+  "chainId": 8453,
+  "timestamp": "2025-11-28T15:17:00.782Z",
+  "deployer": "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266",
+  "contractAddress": "0x6009FE6364C2aF6e2336afab96E95b0547bf007F",
+  "tokenInfo": {
+    "name": "Aquari",
+    "symbol": "AQUARI",
+    "totalSupply": "100000000.0",
+    "owner": "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266",
+    "deployerBalance": "100000000.0"
+  },
+  "taxConfig": {
+    "burnTax": "0",
+    "burnTaxPercent": "0.00%",
+    "foundationFee": "900",
+    "foundationFeePercent": "9.00%",
+    "foundationWallet": "0x13B9110A72A8D08A4c08c411143AEDbf0c3FC235",
+    "tradingEnabled": true
+  },
+  "baseAddresses": {
+    "weth": "0x4200000000000000000000000000000000000006",
+    "factory": "0x8909Dc15e40173Ff4699343b6eB8132c65e18eC6",
+    "router": "0x4752ba5dbc23f44d87826276bf6fd6b1c372ad24"
+  },
+  "pairAddress": "0xebeb19e2f37f5F740c17b4653142a2844D77ba2A",
+  "liquidityAdded": {
+    "timestamp": "2025-11-28T15:17:34.433Z",
+    "aquariAmount": "1000000.0",
+    "ethAmount": "1000.0",
+    "lpTokenBalance": "31622.776601683793318988",
+    "pairAddress": "0xebeb19e2f37f5F740c17b4653142a2844D77ba2A",
+    "txHash": "0xc3b81001b329e180a924b9848e10f1f1aa748c0d9c38876c0d4b585366f949f9"
+  },
+  "taxConfiguration": {
+    "burnTax": 125,
+    "foundationFee": 125,
+    "totalTax": 250,
+    "burnTaxPercent": "1.25%",
+    "foundationFeePercent": "1.25%",
+    "totalTaxPercent": "2.50%",
+    "updatedAt": "2025-11-28T15:23:44.669Z"
+  }
+}
