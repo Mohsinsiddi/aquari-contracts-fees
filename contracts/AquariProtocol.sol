@@ -295,9 +295,9 @@ contract AquariProtocol is
         if (initialOwner == address(0)) revert InvalidAddress();
 
         __ReentrancyGuard_init();
-        __ERC20_init("Aquari", "AQUARI");
+        __ERC20_init("Aquari Test", "AQUARIT");
         __Ownable_init(initialOwner);
-        __ERC20Permit_init_unchained("Aquari");
+        __ERC20Permit_init_unchained("Aquari Test");
         __ERC20Pausable_init_unchained();
         __ERC20Burnable_init_unchained();
 

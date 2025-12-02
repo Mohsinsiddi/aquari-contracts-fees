@@ -24,8 +24,8 @@ module.exports = {
       }
     },
     baseMainnet: {
-      url: `https://mainnet.base.org/`,
-      accounts: [process.env.ONCHAINKEY],
+      url: "https://base-mainnet.g.alchemy.com/v2/eQ_Axw8A_qkH4LzpV-gnOgilkiflVSam",
+      accounts: [process.env.ONCHAINKEY, process.env.ONCHAINKEY2],
       chainId: 8453,
       gas: 'auto',
       gasPrice: 'auto',
