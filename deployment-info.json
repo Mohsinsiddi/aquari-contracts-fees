@@ -1,14 +1,14 @@
 {
-  "network": "localhost",
+  "network": "baseMainnet",
   "chainId": 8453,
-  "timestamp": "2025-11-28T15:17:00.782Z",
-  "deployer": "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266",
-  "contractAddress": "0x6009FE6364C2aF6e2336afab96E95b0547bf007F",
+  "timestamp": "2025-12-01T15:49:57.209Z",
+  "deployer": "0x8c5DF0e0a8DDE9b701BEf30761E54D86c69f430A",
+  "contractAddress": "0x78D84c417bE56da7eA5694acAc5E85EE14E46138",
   "tokenInfo": {
-    "name": "Aquari",
-    "symbol": "AQUARI",
+    "name": "Aquari Test",
+    "symbol": "AQUARIT",
     "totalSupply": "100000000.0",
-    "owner": "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266",
+    "owner": "0x8c5DF0e0a8DDE9b701BEf30761E54D86c69f430A",
     "deployerBalance": "100000000.0"
   },
   "taxConfig": {
@@ -24,14 +24,14 @@
     "factory": "0x8909Dc15e40173Ff4699343b6eB8132c65e18eC6",
     "router": "0x4752ba5dbc23f44d87826276bf6fd6b1c372ad24"
   },
-  "pairAddress": "0xebeb19e2f37f5F740c17b4653142a2844D77ba2A",
+  "pairAddress": "0xcb02d34fBD34dC5af95bABb3AFE7bF23c376b6a7",
   "liquidityAdded": {
-    "timestamp": "2025-11-28T15:17:34.433Z",
-    "aquariAmount": "1000000.0",
-    "ethAmount": "1000.0",
-    "lpTokenBalance": "31622.776601683793318988",
-    "pairAddress": "0xebeb19e2f37f5F740c17b4653142a2844D77ba2A",
-    "txHash": "0xc3b81001b329e180a924b9848e10f1f1aa748c0d9c38876c0d4b585366f949f9"
+    "timestamp": "2025-12-01T16:05:19.323Z",
+    "aquariAmount": "10000.0",
+    "ethAmount": "0.01",
+    "lpTokenBalance": "0.0",
+    "pairAddress": "0xcb02d34fBD34dC5af95bABb3AFE7bF23c376b6a7",
+    "txHash": "0xffdaea714dfbe262e5cff1c27008cbc0bea8e71ea9fd50f2a9a66eb46abdea87"
   },
   "taxConfiguration": {
     "burnTax": 125,
@@ -40,6 +40,6 @@
     "burnTaxPercent": "1.25%",
     "foundationFeePercent": "1.25%",
     "totalTaxPercent": "2.50%",
-    "updatedAt": "2025-11-28T15:23:44.669Z"
+    "updatedAt": "2025-12-02T04:22:07.740Z"
   }
 }

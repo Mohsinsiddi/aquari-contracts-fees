@@ -1,7 +1,6 @@
-require("dotenv").config();
 require("@nomicfoundation/hardhat-toolbox");
 require("@openzeppelin/hardhat-upgrades");
-
+require("dotenv").config({ path: __dirname + '/.env' });
 /** @type import('hardhat/config').HardhatUserConfig */
 module.exports = {
   networks: {
@@ -9,23 +8,18 @@ module.exports = {
       forking: {
         url: "https://base-mainnet.g.alchemy.com/v2/eQ_Axw8A_qkH4LzpV-gnOgilkiflVSam",
         enabled: true,
-        blockNumber: 23000000 // Pin to specific block
       },
       chainId: 8453,
-      chains: {
-        8453: {
-          hardforkHistory: {
-            cancun: 1 // Base uses Cancun from block 1
-          }
-        }
+      hardforkHistory: {
+        cancun: 1,
       },
       accounts: {
         accountsBalance: "10000000000000000000000"
       }
     },
     baseMainnet: {
-      url: `https://mainnet.base.org/`,
-      accounts: [process.env.ONCHAINKEY],
+      url: "https://base-mainnet.g.alchemy.com/v2/eQ_Axw8A_qkH4LzpV-gnOgilkiflVSam",
+      accounts: [process.env.ONCHAINKEY, process.env.ONCHAINKEY2],
       chainId: 8453,
       gas: 'auto',
       gasPrice: 'auto',
@@ -44,7 +38,8 @@ module.exports = {
     localhost: {
       url: "http://127.0.0.1:8545",
       chainId: 8453,
-      timeout: 60000
+      timeout: 60000,
+      accounts: [process.env.ONCHAINKEY, process.env.ONCHAINKEY2],
     },
   },
   etherscan: {

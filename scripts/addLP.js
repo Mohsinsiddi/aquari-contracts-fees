@@ -74,8 +74,8 @@ async function main() {
   console.log("AQUARI Balance:", ethers.formatEther(aquariBalance));
 
   // Define liquidity amounts
-  const tokenAmount = ethers.parseEther("1000000"); // 1M AQUARI
-  const ethAmount = ethers.parseEther("1000"); // 1 ETH
+  const tokenAmount = ethers.parseEther("10000"); // 1M AQUARI
+  const ethAmount = ethers.parseEther("0.01"); // 1 ETH
 
   console.log("\n💰 LIQUIDITY TO ADD");
   console.log("═".repeat(70));
