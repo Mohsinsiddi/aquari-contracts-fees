@@ -350,6 +350,17 @@ npx hardhat run scripts/mainnet-execution/5_test_trading_after.js --network fork
 
 Deploy a **separate test token** (AQTEST) on real Base mainnet to verify fee behavior via Uniswap UI without risking the real AQUARI contract.
 
+### Live Test Token (Already Deployed)
+
+A test token is already deployed on Base mainnet. You can review the transactions to see fee behavior:
+
+| Contract | Address | BaseScan |
+|----------|---------|----------|
+| AQTEST Token | `0xDA1f4C0368E95211bd7884CeAB11d3517A783faE` | [View Contract](https://basescan.org/address/0xda1f4c0368e95211bd7884ceab11d3517a783fae) |
+| LP Pair | `0x7DB573840a722a07187F9FdAAecbbf8E1cfAa7A0` | [View Transactions](https://basescan.org/address/0x7db573840a722a07187f9fdaaecbbf8e1cfaa7a0#tokentxns) |
+
+**To verify fee behavior:** Check the last few swap transactions after fees were enabled - you'll see 2.5% less tokens received.
+
 ### Why Use Test Token?
 
 - Trade on **real Uniswap UI** (not scripted trades)
@@ -360,6 +371,16 @@ Deploy a **separate test token** (AQTEST) on real Base mainnet to verify fee beh
 
 ### Test Token Workflow
 
+> **Note:** For detailed test token documentation, see [`scripts/test-token/README.md`](test-token/README.md)
+
+**Fork Testing:** You can also test these scripts on fork first:
+```bash
+docker restart aquari-fork && sleep 3
+npx hardhat run scripts/test-token/1_deploy.js --network fork
+# ... continue with other scripts using --network fork
+```
+
+**Mainnet Deployment:**
 ```bash
 # Step 1: Deploy AquariTest (AQTEST) token
 npx hardhat run scripts/test-token/1_deploy.js --network base
@@ -411,6 +432,16 @@ Deployed addresses are saved to `scripts/test-token/state.json`:
 ---
 
 ## Mainnet Execution
+
+### Option 1: Using Scripts (Recommended for Verification)
+
+The scripts provide detailed logging and verification at each step.
+
+### Option 2: Using MetaMask (Simpler for Experienced Users)
+
+For experienced users, you can call contract functions directly via:
+- **BaseScan Write Contract**: [AQUARI Contract](https://basescan.org/address/0x7f0e9971d3320521fc88f863e173a4cddbb051ba#writeProxyContract)
+- Connect MetaMask → Call `setTaxConfig(125, 125)` → Call `setUniswapV2Pair(0x30Ec7B2f5be26d03D20AC86554dAadD2b738CA0F)`
 
 ### Pre-Flight Checklist
 
