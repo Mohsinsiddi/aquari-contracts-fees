@@ -1,45 +1,48 @@
 version: "3.8"
 
 services:
-  # Base mainnet fork node
+  # Base mainnet fork using Anvil (Foundry)
   fork:
+    image: ghcr.io/foundry-rs/foundry:latest
+    platform: linux/amd64
+    ports:
+      - "8545:8545"
+    command: >
+      anvil
+      --fork-url https://mainnet.base.org
+      --chain-id 8453
+      --host 0.0.0.0
+      --port 8545
+      --accounts 10
+      --balance 10000
+      --block-time 1
+    healthcheck:
+      test: ["CMD-SHELL", "cast chain-id --rpc-url http://localhost:8545 || exit 1"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 30s
+
+  # Alternative: Hardhat node fork (slower but works if Anvil has issues)
+  fork-hardhat:
     image: node:20-alpine
     working_dir: /app
     volumes:
       - .:/app
       - node_modules:/app/node_modules
     ports:
-      - "8545:8545"
+      - "8546:8545"
     environment:
       - NODE_OPTIONS=--max-old-space-size=4096
     command: >
       sh -c "
         echo 'Installing dependencies...' &&
         npm install --silent &&
-        echo 'Starting Base mainnet fork...' &&
+        echo 'Starting Base mainnet fork (Hardhat)...' &&
         npx hardhat node --fork https://mainnet.base.org --hostname 0.0.0.0
       "
-    healthcheck:
-      test: ["CMD-SHELL", "wget -q --spider http://localhost:8545 || exit 1"]
-      interval: 10s
-      timeout: 5s
-      retries: 12
-      start_period: 60s
-
-  # Test runner (for running scripts)
-  test:
-    image: node:20-alpine
-    working_dir: /app
-    volumes:
-      - .:/app
-      - node_modules:/app/node_modules
-    environment:
-      - ADMIN_KEY=${ADMIN_KEY:-}
-    depends_on:
-      fork:
-        condition: service_healthy
     profiles:
-      - test
+      - hardhat
 
 volumes:
   node_modules:
