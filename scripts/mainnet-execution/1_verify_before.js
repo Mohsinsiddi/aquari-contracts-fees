@@ -20,8 +20,9 @@
  * =============================================================================
  */
 
-const { ethers } = require("hardhat");
-const { MAINNET, NETWORKS, printDisclaimer } = require("../config");
+const hre = require("hardhat");
+const { ethers } = hre;
+const { MAINNET, NETWORKS, printDisclaimer, getMainnetSigner } = require("../config");
 
 const TOKEN_ABI = [
     "function name() view returns (string)",
@@ -50,14 +51,17 @@ const PAIR_ABI = [
 async function main() {
     printDisclaimer();
 
+    // Get signer (impersonated on fork, real on mainnet)
+    const { signer, isFork } = await getMainnetSigner(hre);
+
+    const modeLabel = isFork ? "🔵 FORK TEST" : "🔴 MAINNET";
     console.log("=".repeat(70));
-    console.log("🔴 MAINNET STEP 1: VERIFY STATE BEFORE FEE ENABLEMENT");
+    console.log(`${modeLabel} STEP 1: VERIFY STATE BEFORE FEE ENABLEMENT`);
     console.log("=".repeat(70));
     console.log("");
     console.log("This script is READ ONLY - no transactions will be made.");
     console.log("");
 
-    const [signer] = await ethers.getSigners();
     const network = NETWORKS.base;
 
     // Contracts

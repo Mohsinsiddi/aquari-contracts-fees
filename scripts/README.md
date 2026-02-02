@@ -12,9 +12,18 @@ docker compose up -d
 
 # 3. Test REAL mainnet AQUARI (impersonates owner - no key needed!)
 docker restart aquari-fork && npx hardhat run scripts/fork-test/test-real-aquari.js --network fork
+
+# 4. Test FULL Mainnet Execution Flow on Fork (RECOMMENDED BEFORE MAINNET!)
+docker restart aquari-fork
+npx hardhat run scripts/mainnet-execution/1_verify_before.js --network fork
+npx hardhat run scripts/mainnet-execution/2_set_fees.js --network fork
+npx hardhat run scripts/mainnet-execution/2b_test_trading_before.js --network fork  # Verify 0% fee
+npx hardhat run scripts/mainnet-execution/3_enable_fees.js --network fork
+npx hardhat run scripts/mainnet-execution/4_verify_after.js --network fork
+npx hardhat run scripts/mainnet-execution/5_test_trading_after.js --network fork    # Verify 2.5% fee
 ```
 
-This tests the **actual deployed AQUARI contract** (`0x7f0e9971...`) on a fork by impersonating the real owner. Shows:
+This tests the **actual deployed AQUARI contract** (`0x7f0e9971...`) on a fork by impersonating the real owner (`0x187ED96248Bbbbf4D5b059187e030B7511b67801`). Shows:
 - Contract state, LP reserves, token balances
 - setTaxConfig() and setUniswapV2Pair() execution
 - BUY/SELL via V4 Universal Router with fees
@@ -93,14 +102,32 @@ If you are NOT the owner, transactions will FAIL.
 
 **Note:** Use environment variables since hardhat doesn't support `--` arg passing.
 
-### Mainnet Scripts (--network base)
+### Mainnet Execution Scripts (--network fork OR --network base)
 
-| Command | Description | Tested | Result |
-|---------|-------------|--------|--------|
-| `npx hardhat run scripts/mainnet-execution/1_verify_before.js --network base` | Pre-flight checks (READ ONLY) | ✅ | PASS |
-| `npx hardhat run scripts/mainnet-execution/2_set_fees.js --network base` | Set tax configuration | ⚠️ | Ready |
-| `npx hardhat run scripts/mainnet-execution/3_enable_fees.js --network base` | Enable fees (IRREVERSIBLE!) | ⚠️ | Ready |
-| `npx hardhat run scripts/mainnet-execution/4_verify_after.js --network base` | Post-enable verification | ⚠️ | Ready |
+**NEW:** All mainnet-execution scripts now support **fork testing with owner impersonation!**
+
+| Step | Script | Description | Expected Fee |
+|------|--------|-------------|--------------|
+| 1 | `1_verify_before.js` | Pre-flight checks (READ ONLY) | - |
+| 2 | `2_set_fees.js` | Set tax configuration | - |
+| **2b** | **`2b_test_trading_before.js`** | **Test BUY/SELL via V4** | **0%** |
+| 3 | `3_enable_fees.js` | Enable fees (⚠️ IRREVERSIBLE!) | - |
+| 4 | `4_verify_after.js` | Post-enable verification | - |
+| **5** | **`5_test_trading_after.js`** | **Test BUY/SELL via V4** | **2.5%** |
+
+| Command | Network | Owner Key |
+|---------|---------|-----------|
+| `npx hardhat run scripts/mainnet-execution/1_verify_before.js --network fork` | Fork | ❌ No |
+| `npx hardhat run scripts/mainnet-execution/2_set_fees.js --network fork` | Fork | ❌ No |
+| `npx hardhat run scripts/mainnet-execution/2b_test_trading_before.js --network fork` | Fork | ❌ No |
+| `npx hardhat run scripts/mainnet-execution/3_enable_fees.js --network fork` | Fork | ❌ No |
+| `npx hardhat run scripts/mainnet-execution/4_verify_after.js --network fork` | Fork | ❌ No |
+| `npx hardhat run scripts/mainnet-execution/5_test_trading_after.js --network fork` | Fork | ❌ No |
+| `npx hardhat run scripts/mainnet-execution/*.js --network base` | **MAINNET** | ✅ Yes |
+
+**Key Difference:**
+- `--network fork`: Impersonates real owner (`0x187ED96248Bbbbf4D5b059187e030B7511b67801`), no key needed
+- `--network base`: Uses your private key from `.env`, must be the real owner
 
 **Legend:** ✅ Fully Tested | ⚠️ Not Yet Executed (ready for production)
 
@@ -195,15 +222,41 @@ TEST_MODE=simulate npx hardhat run scripts/fork-test/run-all.js --network fork
 TEST_MODE=mainnet npx hardhat run scripts/fork-test/run-all.js --network fork
 ```
 
-### 5. Mainnet Execution (Production)
+### 5. Mainnet Execution (Fork Test + Production)
 
 ```bash
-# Edit config.js - set MODE = "mainnet"
+# ═══════════════════════════════════════════════════════════════════════════
+# STEP A: Test FULL FLOW on Fork FIRST (No key needed - impersonates owner!)
+# ═══════════════════════════════════════════════════════════════════════════
+docker restart aquari-fork  # Fresh fork state
 
+# 1. Verify state
+npx hardhat run scripts/mainnet-execution/1_verify_before.js --network fork
+
+# 2. Set fees
+npx hardhat run scripts/mainnet-execution/2_set_fees.js --network fork
+
+# 2b. Test trading BEFORE enabling (should be 0% fee)
+npx hardhat run scripts/mainnet-execution/2b_test_trading_before.js --network fork
+
+# 3. Enable fees (auto-proceeds on fork)
+npx hardhat run scripts/mainnet-execution/3_enable_fees.js --network fork
+
+# 4. Verify fees enabled
+npx hardhat run scripts/mainnet-execution/4_verify_after.js --network fork
+
+# 5. Test trading AFTER enabling (should be 2.5% fee)
+npx hardhat run scripts/mainnet-execution/5_test_trading_after.js --network fork
+
+# ═══════════════════════════════════════════════════════════════════════════
+# STEP B: Execute on REAL Mainnet (Requires owner key in .env!)
+# ═══════════════════════════════════════════════════════════════════════════
 npx hardhat run scripts/mainnet-execution/1_verify_before.js --network base
 npx hardhat run scripts/mainnet-execution/2_set_fees.js --network base
+npx hardhat run scripts/mainnet-execution/2b_test_trading_before.js --network base  # Optional
 npx hardhat run scripts/mainnet-execution/3_enable_fees.js --network base  # ⚠️ IRREVERSIBLE!
 npx hardhat run scripts/mainnet-execution/4_verify_after.js --network base
+npx hardhat run scripts/mainnet-execution/5_test_trading_after.js --network base
 ```
 
 ---
@@ -219,10 +272,16 @@ npx hardhat run scripts/mainnet-execution/4_verify_after.js --network base
 | **Fork Test** | `NEW_TOKEN=true` (fresh deploy, you=owner) | ✅ | 28/28 PASS | Full edge cases |
 | **Fork Test** | `TEST_MODE=simulate` (fresh deploy, you=owner) | ✅ | 28/28 PASS | Full edge cases |
 | **Fork Test** | `TEST_MODE=mainnet` (real AQUARI) | ❌ | Not tested | Requires real owner key |
-| **Mainnet** | `1_verify_before.js --network base` | ✅ | PASS | READ ONLY |
-| **Mainnet** | `2_set_fees.js --network base` | ❌ | Not tested | Requires owner key |
-| **Mainnet** | `3_enable_fees.js --network base` | ❌ | Not tested | Requires owner key |
-| **Mainnet** | `4_verify_after.js --network base` | ❌ | Not tested | After fees enabled |
+| **Mainnet Fork** | `1_verify_before.js --network fork` | ✅ | PASS | Impersonates owner |
+| **Mainnet Fork** | `2_set_fees.js --network fork` | ✅ | PASS | Impersonates owner |
+| **Mainnet Fork** | `2b_test_trading_before.js --network fork` | ✅ | PASS | **0% fee** (pairIsSet=false) |
+| **Mainnet Fork** | `3_enable_fees.js --network fork` | ✅ | PASS | Impersonates owner, auto-proceeds |
+| **Mainnet Fork** | `4_verify_after.js --network fork` | ✅ | PASS | Impersonates owner |
+| **Mainnet Fork** | `5_test_trading_after.js --network fork` | ✅ | PASS | **2.5% fee** (pairIsSet=true) |
+| **Mainnet Real** | `1_verify_before.js --network base` | ✅ | PASS | READ ONLY |
+| **Mainnet Real** | `2_set_fees.js --network base` | ⚠️ | Ready | Requires owner key |
+| **Mainnet Real** | `3_enable_fees.js --network base` | ⚠️ | Ready | Requires owner key |
+| **Mainnet Real** | `4_verify_after.js --network base` | ⚠️ | Ready | After fees enabled |
 
 ### Edge Cases Tested (in Default/NEW_TOKEN/simulate modes)
 
@@ -326,8 +385,10 @@ scripts/
 ├── mainnet-execution/           ← Production scripts (real AQUARI)
 │   ├── 1_verify_before.js       Pre-flight checks (READ ONLY)
 │   ├── 2_set_fees.js            Set tax configuration
+│   ├── 2b_test_trading_before.js  Test BUY/SELL (verify 0% fee)
 │   ├── 3_enable_fees.js         Enable fees (⚠️ IRREVERSIBLE!)
-│   └── 4_verify_after.js        Post-enable verification
+│   ├── 4_verify_after.js        Post-enable verification
+│   └── 5_test_trading_after.js  Test BUY/SELL (verify 2.5% fee)
 │
 └── legacy/                      ← Old scripts (reference only)
     └── *.js
@@ -504,6 +565,13 @@ Before running mainnet scripts:
 - [ ] Run comprehensive fork test (`fork-test/run-all.js`)
 - [ ] Verify all 32 tests pass
 - [ ] Check fee precision is within tolerance (< 0.02%)
+- [ ] **Run mainnet-execution scripts on FORK first:**
+  - [ ] `1_verify_before.js --network fork` ✓
+  - [ ] `2_set_fees.js --network fork` ✓
+  - [ ] `2b_test_trading_before.js --network fork` ✓ (verify 0% fee)
+  - [ ] `3_enable_fees.js --network fork` ✓
+  - [ ] `4_verify_after.js --network fork` ✓
+  - [ ] `5_test_trading_after.js --network fork` ✓ (verify 2.5% fee)
 - [ ] Verify you are the owner
 - [ ] Verify pair address matches factory
 - [ ] Verify tax config is correct (125 + 125 = 250 bps = 2.5%)

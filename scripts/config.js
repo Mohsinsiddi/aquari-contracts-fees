@@ -79,6 +79,7 @@ const MAINNET = {
     pair: {
         address: "0x30Ec7B2f5be26d03D20AC86554dAadD2b738CA0F",
     },
+    owner: "0x187ED96248Bbbbf4D5b059187e030B7511b67801",
     foundationWallet: "0x13B9110A72A8D08A4c08c411143AEDbf0c3FC235",
     taxConfig: {
         burnTax: 125,        // 1.25%
@@ -320,6 +321,49 @@ async function verifyOwner(contract, signer) {
     return true;
 }
 
+/**
+ * Get a signer that works on both fork (impersonation) and mainnet (real key)
+ * @param {object} hre - Hardhat Runtime Environment
+ * @returns {Promise<{signer: Signer, isFork: boolean}>}
+ */
+async function getMainnetSigner(hre) {
+    const networkName = hre.network.name;
+    const isFork = networkName === "fork";
+
+    if (isFork) {
+        // On fork: impersonate the real mainnet owner
+        const ownerAddress = MAINNET.owner;
+
+        console.log("─".repeat(70));
+        console.log("🔵 FORK MODE - Impersonating Owner");
+        console.log("─".repeat(70));
+        console.log(`Owner Address: ${ownerAddress}`);
+
+        // Anvil impersonation
+        await hre.network.provider.request({
+            method: "anvil_impersonateAccount",
+            params: [ownerAddress]
+        });
+
+        // Fund with ETH for gas
+        await hre.network.provider.request({
+            method: "anvil_setBalance",
+            params: [ownerAddress, "0x8AC7230489E80000"] // 10 ETH
+        });
+
+        const signer = await hre.ethers.getImpersonatedSigner(ownerAddress);
+        console.log(`Impersonated: ${await signer.getAddress()}`);
+        console.log(`Funded with 10 ETH for gas`);
+        console.log("");
+
+        return { signer, isFork: true };
+    } else {
+        // On mainnet: use real signer from private key
+        const [signer] = await hre.ethers.getSigners();
+        return { signer, isFork: false };
+    }
+}
+
 // =============================================================================
 // EXPORTS
 // =============================================================================
@@ -340,4 +384,5 @@ module.exports = {
     printConfig,
     printAllSimulations,
     verifyOwner,
+    getMainnetSigner,
 };

@@ -22,9 +22,10 @@
  * =============================================================================
  */
 
-const { ethers } = require("hardhat");
+const hre = require("hardhat");
+const { ethers } = hre;
 const readline = require("readline");
-const { MAINNET, NETWORKS, printDisclaimer, verifyOwner } = require("../config");
+const { MAINNET, NETWORKS, printDisclaimer, verifyOwner, getMainnetSigner } = require("../config");
 
 const TOKEN_ABI = [
     "function owner() view returns (address)",
@@ -56,21 +57,30 @@ function askQuestion(question) {
 async function main() {
     printDisclaimer();
 
+    // Get signer (impersonated on fork, real on mainnet)
+    const { signer, isFork } = await getMainnetSigner(hre);
+
+    const modeLabel = isFork ? "🔵 FORK TEST" : "🔴 MAINNET";
     console.log("=".repeat(70));
-    console.log("🔴 MAINNET STEP 3: ENABLE FEES (SET PAIR ADDRESS)");
+    console.log(`${modeLabel} STEP 3: ENABLE FEES (SET PAIR ADDRESS)`);
     console.log("=".repeat(70));
-    console.log("");
-    console.log("⚠️  ╔═══════════════════════════════════════════════════════════════╗");
-    console.log("⚠️  ║                        WARNING                                 ║");
-    console.log("⚠️  ║                                                                ║");
-    console.log("⚠️  ║   THIS ACTION IS IRREVERSIBLE!                                ║");
-    console.log("⚠️  ║   Once you set the pair address, it CANNOT be changed!        ║");
-    console.log("⚠️  ║   If you set the WRONG address, fees will NEVER work!         ║");
-    console.log("⚠️  ║                                                                ║");
-    console.log("⚠️  ╚═══════════════════════════════════════════════════════════════╝");
     console.log("");
 
-    const [signer] = await ethers.getSigners();
+    if (!isFork) {
+        console.log("⚠️  ╔═══════════════════════════════════════════════════════════════╗");
+        console.log("⚠️  ║                        WARNING                                 ║");
+        console.log("⚠️  ║                                                                ║");
+        console.log("⚠️  ║   THIS ACTION IS IRREVERSIBLE!                                ║");
+        console.log("⚠️  ║   Once you set the pair address, it CANNOT be changed!        ║");
+        console.log("⚠️  ║   If you set the WRONG address, fees will NEVER work!         ║");
+        console.log("⚠️  ║                                                                ║");
+        console.log("⚠️  ╚═══════════════════════════════════════════════════════════════╝");
+        console.log("");
+    } else {
+        console.log("ℹ️  Running on FORK - changes won't affect real mainnet");
+        console.log("");
+    }
+
     const network = NETWORKS.base;
     const token = new ethers.Contract(MAINNET.token.address, TOKEN_ABI, signer);
     const factory = new ethers.Contract(network.uniswapV2.factory, FACTORY_ABI, signer);
@@ -144,12 +154,17 @@ async function main() {
     console.log(`  3. This action CANNOT be undone!`);
     console.log("");
 
-    const answer = await askQuestion("Type 'ENABLE FEES' to proceed (or anything else to cancel): ");
+    // Skip confirmation on fork (auto-proceed for testing)
+    if (!isFork) {
+        const answer = await askQuestion("Type 'ENABLE FEES' to proceed (or anything else to cancel): ");
 
-    if (answer !== "ENABLE FEES") {
-        console.log("");
-        console.log("❌ Cancelled. No changes made.");
-        process.exit(0);
+        if (answer !== "ENABLE FEES") {
+            console.log("");
+            console.log("❌ Cancelled. No changes made.");
+            process.exit(0);
+        }
+    } else {
+        console.log("🔵 FORK MODE: Auto-proceeding (no confirmation needed)");
     }
 
     console.log("");

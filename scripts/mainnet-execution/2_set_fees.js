@@ -18,8 +18,9 @@
  * =============================================================================
  */
 
-const { ethers } = require("hardhat");
-const { MAINNET, NETWORKS, printDisclaimer, verifyOwner } = require("../config");
+const hre = require("hardhat");
+const { ethers } = hre;
+const { MAINNET, NETWORKS, printDisclaimer, verifyOwner, getMainnetSigner } = require("../config");
 
 const TOKEN_ABI = [
     "function owner() view returns (address)",
@@ -34,12 +35,15 @@ const TOKEN_ABI = [
 async function main() {
     printDisclaimer();
 
+    // Get signer (impersonated on fork, real on mainnet)
+    const { signer, isFork } = await getMainnetSigner(hre);
+
+    const modeLabel = isFork ? "🔵 FORK TEST" : "🔴 MAINNET";
     console.log("=".repeat(70));
-    console.log("🔴 MAINNET STEP 2: SET TAX CONFIGURATION");
+    console.log(`${modeLabel} STEP 2: SET TAX CONFIGURATION`);
     console.log("=".repeat(70));
     console.log("");
 
-    const [signer] = await ethers.getSigners();
     const token = new ethers.Contract(MAINNET.token.address, TOKEN_ABI, signer);
 
     console.log(`Token:  ${MAINNET.token.address}`);
