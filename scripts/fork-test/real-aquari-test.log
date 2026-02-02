@@ -1,0 +1,179 @@
+
+╔══════════════════════════════════════════════════════════════════════════════╗
+║             TEST REAL MAINNET AQUARI ON FORK (IMPERSONATE OWNER)             ║
+╚══════════════════════════════════════════════════════════════════════════════╝
+
+════════════════════════════════════════════════════════════════════════════════
+STEP 1: LOAD REAL MAINNET CONTRACT
+════════════════════════════════════════════════════════════════════════════════
+
+CONTRACT ADDRESSES:
+  Token (Proxy):  0x7f0e9971d3320521fc88f863e173a4cddbb051ba
+  LP Pair:        0x30Ec7B2f5be26d03D20AC86554dAadD2b738CA0F
+  Foundation:     0x13B9110A72A8D08A4c08c411143AEDbf0c3FC235
+  Owner:          0x187ED96248Bbbbf4D5b059187e030B7511b67801
+
+TOKEN STATE:
+  Name:           Aquari (AQUARI)
+  Total Supply:   13,80,00,000.00 AQUARI
+  Trading:        ENABLED
+  Paused:         NO
+
+FEE STATE:
+  pairIsSet:      false (FEES INACTIVE)
+  burnTax:        0 bps (0%)
+  foundationFee:  900 bps (9%)
+
+════════════════════════════════════════════════════════════════════════════════
+STEP 2: LIQUIDITY POOL STATE
+════════════════════════════════════════════════════════════════════════════════
+
+LP Token Supply: 17,516.466363
+
+  Current Reserves:
+    AQUARI: 87,89,336.443936
+    WETH:   36.625483
+    Price:  4.1670e-6 ETH per AQUARI
+
+════════════════════════════════════════════════════════════════════════════════
+STEP 3: IMPERSONATE OWNER
+════════════════════════════════════════════════════════════════════════════════
+
+Impersonating: 0x187ED96248Bbbbf4D5b059187e030B7511b67801
+Funded with 10 ETH for gas
+
+Trader: 0x70997970C51812dc3A010C7d01b50e0d17dc79C8
+V4 Universal Router: 0x6ff5693b99212da76ad316178a184ab56d299b43
+
+════════════════════════════════════════════════════════════════════════════════
+STEP 4: SET TAX CONFIG (as owner)
+════════════════════════════════════════════════════════════════════════════════
+
+Current: burnTax=0, foundationFee=900
+Target:  burnTax=125, foundationFee=125 (2.5% total)
+
+[PASS] setTaxConfig
+  Gas used: 59,319
+  burnTax: 0 -> 125
+  foundationFee: 900 -> 125
+
+════════════════════════════════════════════════════════════════════════════════
+STEP 5: ENABLE FEES (setUniswapV2Pair)
+════════════════════════════════════════════════════════════════════════════════
+
+Setting pair: 0x30Ec7B2f5be26d03D20AC86554dAadD2b738CA0F
+WARNING: This is IRREVERSIBLE on mainnet!
+
+[PASS] setUniswapV2Pair
+  Gas used: 52,453
+  pairIsSet: false -> true
+  uniswapV2Pair: 0x30Ec7B2f5be26d03D20AC86554dAadD2b738CA0F
+
+════════════════════════════════════════════════════════════════════════════════
+STEP 6: BUY TOKENS VIA V4 UNIVERSAL ROUTER
+════════════════════════════════════════════════════════════════════════════════
+
+Buy amount: 0.01 ETH
+
+BEFORE BUY:
+  Trader balance:     0.00 AQUARI
+  Foundation balance: 8,90,366.773028 AQUARI
+  Total supply:       13,80,00,000.00 AQUARI
+  Reserves:
+    AQUARI: 87,89,336.443936
+    WETH:   36.625483
+    Price:  4.1670e-6 ETH per AQUARI
+
+Executing BUY via V4 Universal Router...
+
+[PASS] BUY succeeded
+  Gas used: 1,72,393
+
+AFTER BUY:
+  Trader balance:     2,332.138266 AQUARI
+  Foundation balance: 8,90,396.672236 AQUARI
+  Total supply:       13,79,99,970.100791 AQUARI
+  Reserves:
+    AQUARI: 87,86,944.507253
+    WETH:   36.635483
+    Price:  4.1693e-6 ETH per AQUARI
+
+FEE ANALYSIS:
+  Gross tokens:        2,391.936683
+  Tokens received:     2,332.138266 (97.50%)
+  Foundation received: 29.899209 (1.25%)
+  Tokens burned:       29.899209 (1.25%)
+  Total fee:           2.50%
+
+════════════════════════════════════════════════════════════════════════════════
+STEP 7: SELL TOKENS VIA V4 UNIVERSAL ROUTER
+════════════════════════════════════════════════════════════════════════════════
+
+Sell amount: 500.00 AQUARI
+
+Setting up Permit2 approvals...
+Permit2 approved
+
+BEFORE SELL:
+  Trader balance:     2,332.138266 AQUARI
+  Foundation balance: 8,90,396.672236 AQUARI
+  Total supply:       13,79,99,970.100791 AQUARI
+  Reserves:
+    AQUARI: 87,86,944.507253
+    WETH:   36.635483
+    Price:  4.1693e-6 ETH per AQUARI
+
+Executing SELL via V4 Universal Router...
+
+[PASS] SELL succeeded
+  Gas used: 1,83,414
+
+AFTER SELL:
+  Trader balance:     1,832.138266 AQUARI
+  Foundation balance: 8,90,402.922236 AQUARI
+  Total supply:       13,79,99,963.850791 AQUARI
+  Reserves:
+    AQUARI: 87,87,432.007253
+    WETH:   36.633457
+    Price:  4.1688e-6 ETH per AQUARI
+
+FEE ANALYSIS:
+  Tokens sold:         500.00
+  Foundation received: 6.25 (1.25%)
+  Tokens burned:       6.25 (1.25%)
+  Total fee:           2.50%
+
+════════════════════════════════════════════════════════════════════════════════
+FINAL STATE
+════════════════════════════════════════════════════════════════════════════════
+
+TOKEN STATE:
+  pairIsSet:          true
+  burnTax:            125 bps (1.25%)
+  foundationFee:      125 bps (1.25%)
+  Total fee:          250 bps (2.5%)
+
+BALANCES:
+  Foundation:         8,90,402.922236 AQUARI
+  Total supply:       13,79,99,963.850791 AQUARI
+  Burned from supply: 36.149209 AQUARI
+
+  Final Reserves:
+    AQUARI: 87,87,432.007253
+    WETH:   36.633457
+    Price:  4.1688e-6 ETH per AQUARI
+
+════════════════════════════════════════════════════════════════════════════════
+
+╔══════════════════════════════════════════════════════════════════════════════╗
+║               TEST COMPLETE - FORK ONLY (NO REAL TRANSACTIONS)               ║
+╚══════════════════════════════════════════════════════════════════════════════╝
+
+This test proved that:
+  1. Owner can set tax config on REAL contract
+  2. Owner can enable fees via setUniswapV2Pair
+  3. BUY works with fees via V4 Universal Router
+  4. SELL works with fees via V4 Universal Router
+
+The REAL mainnet contract is UNCHANGED.
+

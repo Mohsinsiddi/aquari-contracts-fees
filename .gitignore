@@ -17,3 +17,8 @@ node_modules
 ignition/deployments/chain-31337
 
 edr-cache
+
+# Fork test artifacts
+scripts/fork-test/reports/
+scripts/fork-test/simulation-state.json
+deployments/

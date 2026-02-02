@@ -1,5 +1,5 @@
 // scripts/checkBalance.js
-const { ethers } = require("hardhat");
+const { ethers, network } = require("hardhat");
 
 async function main() {
   const signers = await ethers.getSigners();

@@ -1,0 +1,49 @@
+version: '3.8'
+
+# ═══════════════════════════════════════════════════════════
+# AQUARI Fee Enablement - Fork Testing Environment
+# ═══════════════════════════════════════════════════════════
+#
+# USAGE:
+#   docker compose up -d          # Start Anvil fork
+#   docker compose logs -f        # View logs
+#   docker compose down           # Stop
+#
+# Then run fork tests:
+#   npx hardhat run scripts/fork-test/run-all.js --network fork -- --mainnet --new-token
+#
+# ═══════════════════════════════════════════════════════════
+
+services:
+  # ─────────────────────────────────────────────────────────
+  # Anvil - Base mainnet fork for testing
+  # RPC URL: http://localhost:8545
+  # ─────────────────────────────────────────────────────────
+  fork:
+    image: ghcr.io/foundry-rs/foundry:latest
+    container_name: aquari-fork
+    ports:
+      - "8545:8545"
+    entrypoint: ["anvil"]
+    command:
+      - "--fork-url"
+      - "https://base-mainnet.public.blastapi.io"
+      - "--host"
+      - "0.0.0.0"
+      - "--port"
+      - "8545"
+      - "--chain-id"
+      - "8453"
+      - "--accounts"
+      - "10"
+      - "--balance"
+      - "10000"
+      - "--block-time"
+      - "1"
+    healthcheck:
+      test: ["CMD", "cast", "block-number", "--rpc-url", "http://localhost:8545"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+    restart: unless-stopped

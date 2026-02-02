@@ -1,0 +1,11 @@
+node_modules
+.git
+.env
+*.log
+coverage
+cache
+artifacts
+typechain-types
+scripts/fork-test/reports
+scripts/fork-test/simulation-state.json
+deployments/*.json

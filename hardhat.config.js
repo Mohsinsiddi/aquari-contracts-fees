@@ -1,80 +1,43 @@
 require("@nomicfoundation/hardhat-toolbox");
 require("@openzeppelin/hardhat-upgrades");
-require("dotenv").config({ path: __dirname + '/.env' });
+require("dotenv").config();
+
 /** @type import('hardhat/config').HardhatUserConfig */
 module.exports = {
-  networks: {
-    hardhat: {
-      forking: {
-        url: "https://base-mainnet.g.alchemy.com/v2/eQ_Axw8A_qkH4LzpV-gnOgilkiflVSam",
-        enabled: true,
-      },
-      chainId: 8453,
-      hardforkHistory: {
-        cancun: 1,
-      },
-      accounts: {
-        accountsBalance: "10000000000000000000000"
-      }
-    },
-    baseMainnet: {
-      url: "https://base-mainnet.g.alchemy.com/v2/eQ_Axw8A_qkH4LzpV-gnOgilkiflVSam",
-      accounts: [process.env.ONCHAINKEY, process.env.ONCHAINKEY2],
-      chainId: 8453,
-      gas: 'auto',
-      gasPrice: 'auto',
-    },
-    baseSepolia: {
-      url: `https://sepolia.base.org`,
-      accounts: [process.env.ONCHAINKEY],
-      chainId: 84532,
-      gas: 'auto',
-      gasPrice: 'auto',
-    },
-    mainnet: {
-      url: `https://bsc-dataseed.bnbchain.org/`,
-      accounts: [process.env.ONCHAINKEY],
-    },
-    localhost: {
-      url: "http://127.0.0.1:8545",
-      chainId: 8453,
-      timeout: 60000,
-      accounts: [process.env.ONCHAINKEY, process.env.ONCHAINKEY2],
+  solidity: {
+    version: "0.8.21",
+    settings: {
+      optimizer: { enabled: true, runs: 100 },
     },
   },
+
+  networks: {
+    // Local Hardhat node (for unit tests)
+    hardhat: {
+      chainId: 8453,
+    },
+
+    // Connect to Docker fork node (Anvil)
+    // Anvil generates 10 deterministic accounts with 10000 ETH each
+    fork: {
+      url: "http://localhost:8545",
+      chainId: 8453,
+      // Use "remote" to allow impersonation of any account
+      // Anvil's default accounts are still available via getSigners()
+      accounts: "remote",
+    },
+
+    // Base Mainnet (production)
+    base: {
+      url: process.env.BASE_RPC || "https://base-mainnet.public.blastapi.io",
+      chainId: 8453,
+      accounts: process.env.ADMIN_KEY ? [process.env.ADMIN_KEY] : [],
+    },
+  },
+
   etherscan: {
     apiKey: {
-      baseSepolia: "CYUIGVTX1VKY3HVYCZYW2TVXXWGQU4VC1A",
-      base: "CYUIGVTX1VKY3HVYCZYW2TVXXWGQU4VC1A"
+      base: process.env.BASESCAN_API_KEY || "",
     },
-    customChains: [
-      {
-        network: "baseSepolia",
-        chainId: 84532,
-        urls: {
-          apiURL: "https://api-sepolia.basescan.org/api",
-          browserURL: "https://sepolia.basescan.org"
-        }
-      }
-    ]
-  },
-  sourcify: {
-    enabled: true,
-    apiUrl: "https://sourcify.dev/server",
-    browserUrl: "https://repo.sourcify.dev",
-  },
-  solidity: {
-    compilers: [
-      {
-        version: "0.8.21",
-        settings: {
-          optimizer: {
-            enabled: true,
-            runs: 100
-          },
-          viaIR: false,
-        },
-      },
-    ],
   },
 };
