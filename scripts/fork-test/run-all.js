@@ -37,6 +37,13 @@ const {
     calcPercentage,
 } = require("./lib/assertions");
 const { saveState } = require("./lib/state");
+const {
+    getUniversalRouter,
+    buyTokensWithETH,
+    sellFeeTokensForETH,
+    setupPermit2ForSell,
+    PERMIT2_ADDRESS,
+} = require("../utils/universalRouter");
 
 // Helper to get gas used from transaction
 async function getGasUsed(tx) {
@@ -59,8 +66,11 @@ async function main() {
     const signers = await ethers.getSigners();
     const trader = signers[1];
     const traderAddress = await trader.getAddress();
-    const traderRouter = new ethers.Contract(BASE.uniswapV2Router, ABIS.router, trader);
+    // Use V4 Universal Router for swaps (same as Uniswap UI)
+    const traderUniversalRouter = getUniversalRouter(trader);
     const traderToken = new ethers.Contract(ctx.tokenAddress, ABIS.token, trader);
+    // Keep V2 Router for legacy test (T09 - regular swap should fail)
+    const traderV2Router = new ethers.Contract(BASE.uniswapV2Router, ABIS.router, trader);
 
     console.log(`Owner:  ${ctx.signerAddress} (excluded from fees)`);
     console.log(`Trader: ${traderAddress} (NOT excluded - used for fee tests)`);
@@ -406,7 +416,7 @@ async function main() {
     const foundationBefore = await ctx.token.balanceOf(foundationWallet);
     const totalSupplyBefore = await ctx.token.totalSupply();
 
-    console.log(`Buying with ${TEST_PARAMS.buyAmount} ETH...`);
+    console.log(`Buying with ${TEST_PARAMS.buyAmount} ETH via V4 Universal Router...`);
 
     let buyGas = 0;
     let tokensReceived = 0n;
@@ -414,12 +424,17 @@ async function main() {
     let tokensBurned = 0n;
 
     try {
-        const path = [BASE.weth, ctx.tokenAddress];
         const deadline = Math.floor(Date.now() / 1000) + 1200;
 
-        const tx = await traderRouter.swapExactETHForTokens(
-            0, path, traderAddress, deadline,
-            { value: buyAmount }
+        // Use V4 Universal Router for buy (same as Uniswap UI)
+        const tx = await buyTokensWithETH(
+            traderUniversalRouter,
+            ctx.tokenAddress,
+            BASE.weth,
+            traderAddress,
+            buyAmount,
+            0n,  // amountOutMin
+            deadline
         );
         buyGas = await getGasUsed(tx);
 
@@ -495,17 +510,22 @@ async function main() {
     const currentBalance = await ctx.token.balanceOf(traderAddress);
 
     if (currentBalance >= sellAmount) {
+        // Setup Permit2 approvals for V4 Universal Router sell
+        console.log("Setting up Permit2 approvals for sell via V4 Universal Router...");
+        await setupPermit2ForSell(traderToken, ctx.tokenAddress, trader);
+
+        // Also approve V2 Router for the legacy test (T09)
         await (await traderToken.approve(BASE.uniswapV2Router, sellAmount)).wait();
 
         const path = [ctx.tokenAddress, BASE.weth];
         const deadline = Math.floor(Date.now() / 1000) + 1200;
 
-        // T09: Regular swap should fail (for fee-on-transfer tokens)
+        // T09: Regular V2 swap should fail (for fee-on-transfer tokens)
         if (TARGET_FEES.total > 0) {
-            console.log("Testing regular swapExactTokensForETH (should fail)...");
+            console.log("Testing regular V2 swapExactTokensForETH (should fail)...");
             try {
                 await assertReverts(
-                    () => traderRouter.swapExactTokensForETH(sellAmount, 0, path, traderAddress, deadline)
+                    () => traderV2Router.swapExactTokensForETH(sellAmount, 0, path, traderAddress, deadline)
                 );
                 report.pass(TESTS.T09.id, TESTS.T09.name, {
                     "Result": "Reverted as expected (K invariant)",
@@ -517,8 +537,8 @@ async function main() {
             report.skip(TESTS.T09.id, TESTS.T09.name, "Zero fees - regular swap should work");
         }
 
-        // T07: Sell with SupportingFeeOnTransfer
-        console.log("Testing swapExactTokensForETHSupportingFeeOnTransferTokens...");
+        // T07: Sell via V4 Universal Router
+        console.log("Testing sell via V4 Universal Router...");
 
         const sellerBefore = await ctx.token.balanceOf(traderAddress);
         const foundationBeforeSell = await ctx.token.balanceOf(foundationWallet);
@@ -526,8 +546,15 @@ async function main() {
 
         let sellGas = 0;
         try {
-            const tx = await traderRouter.swapExactTokensForETHSupportingFeeOnTransferTokens(
-                sellAmount, 0, path, traderAddress, deadline
+            // Use V4 Universal Router for sell (same as Uniswap UI)
+            const tx = await sellFeeTokensForETH(
+                traderUniversalRouter,
+                ctx.tokenAddress,
+                BASE.weth,
+                traderAddress,
+                sellAmount,
+                0n,  // amountOutMin
+                deadline
             );
             sellGas = await getGasUsed(tx);
 
@@ -761,7 +788,7 @@ async function main() {
     console.log("EDGE CASE SCENARIOS");
     console.log("═".repeat(80) + "\n");
 
-    // Test zero fee scenario
+    // Test zero fee scenario (uses owner - excluded from fees anyway, but tests zero config)
     console.log("Testing Zero Fee Scenario...");
     try {
         // Set fees to 0
@@ -772,12 +799,18 @@ async function main() {
         const supplyBefore = await ctx.token.totalSupply();
         const foundBefore = await ctx.token.balanceOf(foundationWallet);
 
-        const path = [BASE.weth, ctx.tokenAddress];
         const deadline = Math.floor(Date.now() / 1000) + 1200;
+        const ownerUniversalRouter = getUniversalRouter(ctx.signer);
 
-        await (await ctx.router.swapExactETHForTokens(
-            0, path, ctx.signerAddress, deadline,
-            { value: zeroFeeBuyAmount }
+        // Use V4 Universal Router for buy
+        await (await buyTokensWithETH(
+            ownerUniversalRouter,
+            ctx.tokenAddress,
+            BASE.weth,
+            ctx.signerAddress,
+            zeroFeeBuyAmount,
+            0n,
+            deadline
         )).wait();
 
         const balAfter = await ctx.token.balanceOf(ctx.signerAddress);
@@ -819,12 +852,17 @@ async function main() {
         const supplyBefore = await ctx.token.totalSupply();
         const foundBefore = await ctx.token.balanceOf(foundationWallet);
 
-        const path = [BASE.weth, ctx.tokenAddress];
         const deadline = Math.floor(Date.now() / 1000) + 1200;
 
-        await (await traderRouter.swapExactETHForTokens(
-            0, path, traderAddress, deadline,
-            { value: highFeeBuyAmount }
+        // Use V4 Universal Router for buy
+        await (await buyTokensWithETH(
+            traderUniversalRouter,
+            ctx.tokenAddress,
+            BASE.weth,
+            traderAddress,
+            highFeeBuyAmount,
+            0n,
+            deadline
         )).wait();
 
         const balAfter = await ctx.token.balanceOf(traderAddress);
@@ -868,12 +906,17 @@ async function main() {
         const supplyBefore = await ctx.token.totalSupply();
         const foundBefore = await ctx.token.balanceOf(foundationWallet);
 
-        const path = [BASE.weth, ctx.tokenAddress];
         const deadline = Math.floor(Date.now() / 1000) + 1200;
 
-        await (await traderRouter.swapExactETHForTokens(
-            0, path, traderAddress, deadline,
-            { value: extremeFeeBuyAmount }
+        // Use V4 Universal Router for buy
+        await (await buyTokensWithETH(
+            traderUniversalRouter,
+            ctx.tokenAddress,
+            BASE.weth,
+            traderAddress,
+            extremeFeeBuyAmount,
+            0n,
+            deadline
         )).wait();
 
         const balAfter = await ctx.token.balanceOf(traderAddress);

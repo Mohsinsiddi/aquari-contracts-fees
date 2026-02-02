@@ -1,0 +1,458 @@
+
+╔══════════════════════════════════════════════════════════════════════════════╗
+║                  AQUARI FEE ENABLEMENT - AUTOMATED FORK TEST                 ║
+╚══════════════════════════════════════════════════════════════════════════════╝
+
+No mode specified.
+
+Environment variables (recommended for hardhat run):
+  TEST_MODE=simulate npx hardhat run ... --network fork
+  TEST_MODE=mainnet npx hardhat run ... --network fork
+  TEST_MODE=mainnet NEW_TOKEN=true npx hardhat run ... --network fork
+
+Defaulting to --mainnet --new-token
+
+──────────────────────────────────────────────────────────────────────
+MODE: MAINNET --new-token (deploy fresh, YOU are owner)
+──────────────────────────────────────────────────────────────────────
+
+DEPLOYING NEW TOKEN (--new-token flag)...
+
+Step 1/3: Deploying AquariProtocol (UUPS Proxy, same as mainnet)...
+Warning: Potentially unsafe deployment of contracts/mainnet/AquariProtocol.sol:AquariProtocol
+
+    You are using the `unsafeAllow.missing-public-upgradeto` flag with uups proxy.
+    Not having a public upgradeTo or upgradeToAndCall function in your implementation can break upgradeability.
+    Some implementation might check that onchain, and cause the upgrade to revert.
+
+Warning: Potentially unsafe deployment of contracts/mainnet/AquariProtocol.sol:AquariProtocol
+
+    You are using the `unsafeAllow.missing-initializer-call` flag.
+    Make sure you have manually checked that the contract initializer calls all parent initializers.
+
+Warning: Potentially unsafe deployment of contracts/mainnet/AquariProtocol.sol:AquariProtocol
+
+    contracts/mainnet/AquariProtocol.sol:297: Incorrect order of parent initializer calls.
+    - Found initializer calls to parent contracts in the following order: ReentrancyGuardUpgradeable, ERC20Upgradeable, OwnableUpgradeable
+    - Expected: OwnableUpgradeable, ERC20Upgradeable, ERC20PermitUpgradeable, ReentrancyGuardUpgradeable
+        Call parent initializers in linearized order
+
+Warning: Potentially unsafe deployment of contracts/mainnet/AquariProtocol.sol:AquariProtocol
+
+    contracts/mainnet/AquariProtocol.sol:298: Incorrect order of parent initializer calls.
+    - Found initializer calls to parent contracts in the following order: ReentrancyGuardUpgradeable, ERC20Upgradeable, OwnableUpgradeable
+    - Expected: OwnableUpgradeable, ERC20Upgradeable, ERC20PermitUpgradeable, ReentrancyGuardUpgradeable
+        Call parent initializers in linearized order
+
+  Proxy:          0x50Da056BaBB41189cF6Ef7f7d7e13330568BaC1c
+  Implementation: 0x42DE5F039de941cC4F90d70782a359e04825a199
+
+Step 2/3: Creating Uniswap V2 Pair...
+  Created pair: 0x977F9700753AB949e34675144b1021aac25D41D9
+
+Step 3/3: Adding Liquidity...
+  Tokens: 10000
+  ETH:    0.01
+  LP added successfully!
+
+CONTRACT INFO (NEW DEPLOYMENT - AquariProtocol):
+  Proxy:          0x50Da056BaBB41189cF6Ef7f7d7e13330568BaC1c
+  Implementation: 0x42DE5F039de941cC4F90d70782a359e04825a199
+  Pair:           0x977F9700753AB949e34675144b1021aac25D41D9
+  Foundation:     0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266
+  Owner:          0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266
+
+State saved to simulation-state.json
+
+Owner:  0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266 (excluded from fees)
+Trader: 0x70997970C51812dc3A010C7d01b50e0d17dc79C8 (NOT excluded - used for fee tests)
+
+╔══════════════════════════════════════════════════════════════════════════════╗
+║                              MODE: MAINNET TEST                              ║
+║              Testing against REAL AQUARI contract on Base fork               ║
+║              All transactions are simulated (not real mainnet)               ║
+╚══════════════════════════════════════════════════════════════════════════════╝
+
+────────────────────────────────────────────────────────────────────────────────
+Block Number: 41630156
+────────────────────────────────────────────────────────────────────────────────
+
+
+════════════════════════════════════════════════════════════════════════════════
+PRE-FLIGHT CHECKS
+════════════════════════════════════════════════════════════════════════════════
+
+[PASS] PF01: Fork is running
+       Block: 41630156
+[PASS] PF02: Network is Base fork
+       Chain ID: 8453
+       Expected: 8453
+[PASS] PF03: Signer has sufficient ETH
+       Balance: 9999.983488802152568709 ETH
+       Minimum: 0.01 ETH
+[PASS] PF04: Contract is not paused
+       paused(): false
+[PASS] PF05: Trading is enabled
+       tradingEnabled(): true
+
+════════════════════════════════════════════════════════════════════════════════
+OWNER & ACCESS CONTROL
+════════════════════════════════════════════════════════════════════════════════
+
+[PASS] T01: Owner validation
+       Contract Owner: 0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266
+       Signer: 0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266
+[PASS] T02: pairIsSet is false initially
+       pairIsSet: false
+[PASS] T03: Pair address matches factory
+       Factory Pair: 0x977F9700753AB949e34675144b1021aac25D41D9
+       Config Pair: 0x977F9700753AB949e34675144b1021aac25D41D9
+
+════════════════════════════════════════════════════════════════════════════════
+SECURITY VALIDATIONS
+════════════════════════════════════════════════════════════════════════════════
+
+[PASS] S01: Non-owner cannot setTaxConfig
+       Result: Reverted as expected
+[PASS] S02: Non-owner cannot setUniswapV2Pair
+       Result: Reverted as expected
+[PASS] S03: Non-owner cannot setFoundationWallet
+       Result: Reverted as expected
+
+════════════════════════════════════════════════════════════════════════════════
+FEE CONFIGURATION
+════════════════════════════════════════════════════════════════════════════════
+
+Current: burnTax=0, foundationFee=900
+Target:  burnTax=125, foundationFee=125
+
+[PASS] T04: setTaxConfig succeeds (Gas: 59,264)
+       burnTax: 0 -> 125
+       foundationFee: 900 -> 125
+       Total: 250 bps (2.5%)
+[INFO] G01: Gas cost - setTaxConfig
+       Gas Used: 59,264
+
+════════════════════════════════════════════════════════════════════════════════
+FEE ENABLEMENT
+════════════════════════════════════════════════════════════════════════════════
+
+Setting pair address: 0x977F9700753AB949e34675144b1021aac25D41D9
+[PASS] T05: setUniswapV2Pair is one-time (Gas: 52,386)
+       pairIsSet: true
+       uniswapV2Pair: 0x977F9700753AB949e34675144b1021aac25D41D9
+Testing second call (should revert)...
+[PASS] T05b: Second setUniswapV2Pair reverts
+       Error: Reverted as expected
+[INFO] G02: Gas cost - setUniswapV2Pair
+       Gas Used: 52,386
+
+════════════════════════════════════════════════════════════════════════════════
+TRADING TESTS
+════════════════════════════════════════════════════════════════════════════════
+
+Using trader 0x70997970C51812dc3A010C7d01b50e0d17dc79C8 for buy/sell tests (not excluded from fees)
+
+Buying with 0.001 ETH via V4 Universal Router...
+[PASS] T06: Buy applies fees (Gas: 2,23,497)
+       ETH spent: 0.001 ETH
+       Gross tokens: 906.610893880149131581
+       Tokens received: 883.945621533145403293 (97.50%)
+       Foundation: 11.332636173501864144 (1.25%)
+       Burned: 11.332636173501864144 (1.25%)
+[PASS] T08: Fee math accuracy (buy)
+       Expected: 2.5%
+       Actual: 2.49%
+       Diff: 1 bps
+[INFO] G03: Gas cost - buy swap
+       Gas Used: 2,23,497
+
+────────────────────────────────────────────────────────────────────────────────
+SELL TEST
+────────────────────────────────────────────────────────────────────────────────
+
+Setting up Permit2 approvals for sell via V4 Universal Router...
+Testing regular V2 swapExactTokensForETH (should fail)...
+[PASS] T09: Regular swap fails for sell
+       Result: Reverted as expected (K invariant)
+Testing sell via V4 Universal Router...
+[PASS] T07: Sell applies fees (Gas: 1,83,252)
+       Tokens sold: 100.0
+       Foundation: 1.25 (1.25%)
+       Burned: 1.25 (1.25%)
+[PASS] T08b: Fee math accuracy (sell)
+       Expected: 2.5%
+       Actual: 2.50%
+       Diff: 0 bps
+[INFO] G04: Gas cost - sell swap
+       Gas Used: 1,83,252
+
+════════════════════════════════════════════════════════════════════════════════
+STATE VERIFICATION
+════════════════════════════════════════════════════════════════════════════════
+
+[PASS] T10: Total supply decreases (burn)
+       Before: 100000000.0
+       After: 99999987.417363826498135856
+       Burned: 12.582636173501864144
+[PASS] T11: Foundation wallet receives tokens
+       Before: 0.0
+       After: 12.582636173501864144
+       Received: 12.582636173501864144
+
+════════════════════════════════════════════════════════════════════════════════
+EXCLUSION TESTS
+════════════════════════════════════════════════════════════════════════════════
+
+[PASS] T13: Owner transfer skips fees
+       Transferred: 100.0
+       Received: 100.0
+       Fees applied: No (owner excluded)
+
+════════════════════════════════════════════════════════════════════════════════
+ADMIN FUNCTIONS (Post-Enable)
+════════════════════════════════════════════════════════════════════════════════
+
+[PASS] A01: Can change tax config after enable
+       New burnTax: 135
+       New foundationFee: 135
+[PASS] A02: Can change foundation wallet after enable
+       Old: 0x13B9110A72A8D08A4c08c411143AEDbf0c3FC235
+       New: 0x962804884313910A15879Bca7915FFC4936cf175
+
+════════════════════════════════════════════════════════════════════════════════
+EDGE CASE SCENARIOS
+════════════════════════════════════════════════════════════════════════════════
+
+Testing Zero Fee Scenario...
+[PASS] E01: Zero fees - no tax applied
+       Supply: Unchanged (no burn)
+       Foundation: Unchanged (no fee)
+[PASS] E02: Zero fees - full amount received
+       Tokens received: 83.429122241609353203
+
+Testing High Fee Scenario (10%)...
+[PASS] E03: High fees - correctly applied
+       Expected: 10%
+       Actual: 9.99%
+
+Testing Extreme Fee Scenario (50%)...
+[PASS] E04: Extreme fees - correctly applied
+       Expected: 50%
+       Actual: 49.99%
+Restored to production fees
+
+
+
+╔══════════════════════════════════════════════════════════════════════════════╗
+║               AQUARI FEE ENABLEMENT - COMPREHENSIVE TEST REPORT              ║
+╚══════════════════════════════════════════════════════════════════════════════╝
+
+┌──────────────────────────────────────────────────────────────────────────────┐
+│ TEST METADATA                                                               │
+├──────────────────────────────────────────────────────────────────────────────┤
+│  Mode:           MAINNET                                                    │
+│  Date:           2026-02-02T16:27:24.350Z                                   │
+│  Duration:       21.00s                                                     │
+│  Block Number:   41630156                                                   │
+└──────────────────────────────────────────────────────────────────────────────┘
+
+┌──────────────────────────────────────────────────────────────────────────────┐
+│ ACCOUNTS                                                                    │
+├──────────────────────────────────────────────────────────────────────────────┤
+│  Signer:         0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266                 │
+│  Contract Owner: 0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266                 │
+│  Foundation:     0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266                 │
+└──────────────────────────────────────────────────────────────────────────────┘
+
+┌──────────────────────────────────────────────────────────────────────────────┐
+│ CONTRACTS (UUPS Proxy Pattern)                                              │
+├──────────────────────────────────────────────────────────────────────────────┤
+│  Proxy:          0x50Da056BaBB41189cF6Ef7f7d7e13330568BaC1c                 │
+│  Implementation: 0x42DE5F039de941cC4F90d70782a359e04825a199                 │
+│  Pair:           0x977F9700753AB949e34675144b1021aac25D41D9                 │
+└──────────────────────────────────────────────────────────────────────────────┘
+
+┌──────────────────────────────────────────────────────────────────────────────┐
+│ Pre-Flight Checks                                                           │
+├──────────────────────────────────────────────────────────────────────────────┤
+│  [✓ PASS] PF01: Fork is running                                             │
+│           Block: 41630156                                                   │
+│  [✓ PASS] PF02: Network is Base fork                                        │
+│           Chain ID: 8453                                                    │
+│           Expected: 8453                                                    │
+│  [✓ PASS] PF03: Signer has sufficient ETH                                   │
+│           Balance: 9999.983488802152568709 ETH                              │
+│           Minimum: 0.01 ETH                                                 │
+│  [✓ PASS] PF04: Contract is not paused                                      │
+│           paused(): false                                                   │
+│  [✓ PASS] PF05: Trading is enabled                                          │
+│           tradingEnabled(): true                                            │
+└──────────────────────────────────────────────────────────────────────────────┘
+
+┌──────────────────────────────────────────────────────────────────────────────┐
+│ Owner & Access Control                                                      │
+├──────────────────────────────────────────────────────────────────────────────┤
+│  [✓ PASS] T01: Owner validation                                             │
+│           Contract Owner: 0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266        │
+│           Signer: 0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266                │
+│  [✓ PASS] T02: pairIsSet is false initially                                 │
+│           pairIsSet: false                                                  │
+│  [✓ PASS] T03: Pair address matches factory                                 │
+│           Factory Pair: 0x977F9700753AB949e34675144b1021aac25D41D9          │
+│           Config Pair: 0x977F9700753AB949e34675144b1021aac25D41D9           │
+└──────────────────────────────────────────────────────────────────────────────┘
+
+┌──────────────────────────────────────────────────────────────────────────────┐
+│ Security Validations                                                        │
+├──────────────────────────────────────────────────────────────────────────────┤
+│  [✓ PASS] S01: Non-owner cannot setTaxConfig                                │
+│           Result: Reverted as expected                                      │
+│  [✓ PASS] S02: Non-owner cannot setUniswapV2Pair                            │
+│           Result: Reverted as expected                                      │
+│  [✓ PASS] S03: Non-owner cannot setFoundationWallet                         │
+│           Result: Reverted as expected                                      │
+└──────────────────────────────────────────────────────────────────────────────┘
+
+┌──────────────────────────────────────────────────────────────────────────────┐
+│ Fee Configuration                                                           │
+├──────────────────────────────────────────────────────────────────────────────┤
+│  [✓ PASS] T04: setTaxConfig succeeds (59,264 gas)                           │
+│           burnTax: 0 -> 125                                                 │
+│           foundationFee: 900 -> 125                                         │
+│           Total: 250 bps (2.5%)                                             │
+│  [✓ PASS] T05: setUniswapV2Pair is one-time (52,386 gas)                    │
+│           pairIsSet: true                                                   │
+│           uniswapV2Pair: 0x977F9700753AB949e34675144b1021aac25D41D9         │
+│  [✓ PASS] T05b: Second setUniswapV2Pair reverts                             │
+│           Error: Reverted as expected                                       │
+└──────────────────────────────────────────────────────────────────────────────┘
+
+┌──────────────────────────────────────────────────────────────────────────────┐
+│ Trading Tests                                                               │
+├──────────────────────────────────────────────────────────────────────────────┤
+│  [✓ PASS] T06: Buy applies fees (2,23,497 gas)                              │
+│           ETH spent: 0.001 ETH                                              │
+│           Gross tokens: 906.610893880149131581                              │
+│           Tokens received: 883.945621533145403293 (97.50%)                  │
+│           Foundation: 11.332636173501864144 (1.25%)                         │
+│           Burned: 11.332636173501864144 (1.25%)                             │
+│  [✓ PASS] T08: Fee math accuracy (buy)                                      │
+│           Expected: 2.5%                                                    │
+│           Actual: 2.49%                                                     │
+│           Diff: 1 bps                                                       │
+│  [✓ PASS] T09: Regular swap fails for sell                                  │
+│           Result: Reverted as expected (K invariant)                        │
+│  [✓ PASS] T07: Sell applies fees (1,83,252 gas)                             │
+│           Tokens sold: 100.0                                                │
+│           Foundation: 1.25 (1.25%)                                          │
+│           Burned: 1.25 (1.25%)                                              │
+│  [✓ PASS] T08b: Fee math accuracy (sell)                                    │
+│           Expected: 2.5%                                                    │
+│           Actual: 2.50%                                                     │
+│           Diff: 0 bps                                                       │
+└──────────────────────────────────────────────────────────────────────────────┘
+
+┌──────────────────────────────────────────────────────────────────────────────┐
+│ State Verification                                                          │
+├──────────────────────────────────────────────────────────────────────────────┤
+│  [✓ PASS] T10: Total supply decreases (burn)                                │
+│           Before: 100000000.0                                               │
+│           After: 99999987.417363826498135856                                │
+│           Burned: 12.582636173501864144                                     │
+│  [✓ PASS] T11: Foundation wallet receives tokens                            │
+│           Before: 0.0                                                       │
+│           After: 12.582636173501864144                                      │
+│           Received: 12.582636173501864144                                   │
+└──────────────────────────────────────────────────────────────────────────────┘
+
+┌──────────────────────────────────────────────────────────────────────────────┐
+│ Exclusion Tests                                                             │
+├──────────────────────────────────────────────────────────────────────────────┤
+│  [✓ PASS] T13: Owner transfer skips fees                                    │
+│           Transferred: 100.0                                                │
+│           Received: 100.0                                                   │
+│           Fees applied: No (owner excluded)                                 │
+└──────────────────────────────────────────────────────────────────────────────┘
+
+┌──────────────────────────────────────────────────────────────────────────────┐
+│ Edge Cases                                                                  │
+├──────────────────────────────────────────────────────────────────────────────┤
+│  [✓ PASS] E01: Zero fees - no tax applied                                   │
+│           Supply: Unchanged (no burn)                                       │
+│           Foundation: Unchanged (no fee)                                    │
+│  [✓ PASS] E02: Zero fees - full amount received                             │
+│           Tokens received: 83.429122241609353203                            │
+│  [✓ PASS] E03: High fees - correctly applied                                │
+│           Expected: 10%                                                     │
+│           Actual: 9.99%                                                     │
+│  [✓ PASS] E04: Extreme fees - correctly applied                             │
+│           Expected: 50%                                                     │
+│           Actual: 49.99%                                                    │
+└──────────────────────────────────────────────────────────────────────────────┘
+
+┌──────────────────────────────────────────────────────────────────────────────┐
+│ Admin Functions                                                             │
+├──────────────────────────────────────────────────────────────────────────────┤
+│  [✓ PASS] A01: Can change tax config after enable                           │
+│           New burnTax: 135                                                  │
+│           New foundationFee: 135                                            │
+│  [✓ PASS] A02: Can change foundation wallet after enable                    │
+│           Old: 0x13B9110A72A8D08A4c08c411143AEDbf0c3FC235                   │
+│           New: 0x962804884313910A15879Bca7915FFC4936cf175                   │
+└──────────────────────────────────────────────────────────────────────────────┘
+
+┌──────────────────────────────────────────────────────────────────────────────┐
+│ Gas Tracking                                                                │
+├──────────────────────────────────────────────────────────────────────────────┤
+│  [ℹ INFO] G01: Gas cost - setTaxConfig                                      │
+│           Gas Used: 59,264                                                  │
+│  [ℹ INFO] G02: Gas cost - setUniswapV2Pair                                  │
+│           Gas Used: 52,386                                                  │
+│  [ℹ INFO] G03: Gas cost - buy swap                                          │
+│           Gas Used: 2,23,497                                                │
+│  [ℹ INFO] G04: Gas cost - sell swap                                         │
+│           Gas Used: 1,83,252                                                │
+└──────────────────────────────────────────────────────────────────────────────┘
+
+┌──────────────────────────────────────────────────────────────────────────────┐
+│ SCENARIO RESULTS                                                            │
+├──────────────────────────────────────────────────────────────────────────────┤
+│  [✓] Zero Fees                                                              │
+│      No taxes applied when both are 0                                       │
+│  [✓] High Fees (10%)                                                        │
+│      9.99% fee applied                                                      │
+│  [✓] Extreme Fees (50%)                                                     │
+│      49.99% fee applied                                                     │
+│  [✓] Production (2.5%)                                                      │
+│      Target config tested                                                   │
+└──────────────────────────────────────────────────────────────────────────────┘
+
+┌──────────────────────────────────────────────────────────────────────────────┐
+│ GAS USAGE SUMMARY                                                           │
+├──────────────────────────────────────────────────────────────────────────────┤
+│  T04: 59,264 gas                                                            │
+│  T05: 52,386 gas                                                            │
+│  T06: 2,23,497 gas                                                          │
+│  T07: 1,83,252 gas                                                          │
+├──────────────────────────────────────────────────────────────────────────────┤
+│  TOTAL: 5,18,399 gas                                                        │
+└──────────────────────────────────────────────────────────────────────────────┘
+
+╔══════════════════════════════════════════════════════════════════════════════╗
+║ FINAL SUMMARY                                                               ║
+╠══════════════════════════════════════════════════════════════════════════════╣
+║  Total Tests:    32                                                         ║
+║  Passed:         28 ✓                                                       ║
+║  Failed:         0 ✗                                                        ║
+║  Skipped:        0 ○                                                        ║
+║  Info:           4 ℹ                                                        ║
+╠══════════════════════════════════════════════════════════════════════════════╣
+║                                                                             ║
+║  ████  ALL TESTS PASSED  ████                                               ║
+║                                                                             ║
+║  ✓ Ready for mainnet execution                                              ║
+║                                                                             ║
+╚══════════════════════════════════════════════════════════════════════════════╝
+
+Report saved to: /Users/siddi_404/startup/DOTMATRIX/aquari/aquari-contracts/scripts/fork-test/reports/report-mainnet-2026-02-02T16-27-24-350Z.txt

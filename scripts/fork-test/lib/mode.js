@@ -9,31 +9,53 @@ const { MAINNET, BASE, ABIS, TEST_PARAMS } = require("../config");
 const { loadState, saveState } = require("./state");
 
 /**
- * Detect mode from CLI args
+ * Detect mode from CLI args or environment variables
+ *
+ * Environment variables (for use with hardhat run):
+ *   TEST_MODE=simulate     - Edge case testing with AquariSim
+ *   TEST_MODE=mainnet      - Test real AQUARI (need owner key)
+ *   NEW_TOKEN=true         - Deploy fresh token (used with mainnet mode)
+ *
+ * Usage:
+ *   TEST_MODE=simulate npx hardhat run scripts/fork-test/run-all.js --network fork
+ *   TEST_MODE=mainnet NEW_TOKEN=true npx hardhat run scripts/fork-test/run-all.js --network fork
+ *
  * @returns {{ mode: "mainnet" | "simulate", newToken: boolean }}
  */
 function getMode() {
     const args = process.argv.slice(2);
 
-    const isMainnet = args.includes("--mainnet");
-    const isSimulate = args.includes("--simulate");
-    const isNewToken = args.includes("--new-token");
+    // Check environment variables first (works with hardhat run)
+    const envMode = process.env.TEST_MODE;
+    const envNewToken = process.env.NEW_TOKEN === "true";
 
-    if (isMainnet) {
-        // --mainnet --new-token = Deploy fresh token, test as owner
-        // --mainnet = Test real AQUARI (need real owner key)
-        return { mode: "mainnet", newToken: isNewToken };
-    }
+    // Check CLI args (works with node direct execution)
+    const isMainnet = args.includes("--mainnet") || envMode === "mainnet";
+    const isSimulate = args.includes("--simulate") || envMode === "simulate";
+    const isNewToken = args.includes("--new-token") || envNewToken;
 
     if (isSimulate) {
-        return { mode: "simulate", newToken: false };
+        return { mode: "simulate", newToken: true }; // Always deploy fresh for simulate
+    }
+
+    if (isMainnet && !isNewToken) {
+        // --mainnet without --new-token = Test real AQUARI (need real owner key)
+        return { mode: "mainnet", newToken: false };
+    }
+
+    if (isMainnet && isNewToken) {
+        // --mainnet --new-token = Deploy fresh token, test as owner
+        return { mode: "mainnet", newToken: true };
     }
 
     // Default
     console.log("No mode specified.");
-    console.log("  --mainnet              Test real AQUARI (need owner key)");
-    console.log("  --mainnet --new-token  Deploy fresh token, test as owner");
-    console.log("  --simulate             Edge case testing with AquariSim\n");
+    console.log("");
+    console.log("Environment variables (recommended for hardhat run):");
+    console.log("  TEST_MODE=simulate npx hardhat run ... --network fork");
+    console.log("  TEST_MODE=mainnet npx hardhat run ... --network fork");
+    console.log("  TEST_MODE=mainnet NEW_TOKEN=true npx hardhat run ... --network fork");
+    console.log("");
     console.log("Defaulting to --mainnet --new-token\n");
     return { mode: "mainnet", newToken: true };
 }

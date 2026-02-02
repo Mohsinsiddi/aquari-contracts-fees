@@ -4,7 +4,7 @@
  * =============================================================================
  *
  * Tests that NO fees are applied when pairIsSet is false.
- * Uses V4 Universal Router for BUY, V2 Router for SELL.
+ * Uses V4 Universal Router for both BUY and SELL.
  *
  * PREVIOUS: 2_set_tax_config.js
  * NEXT: 3_set_pair.js
@@ -21,7 +21,10 @@ const {
 const {
     getUniversalRouter,
     buyTokensWithETH,
+    sellTokensForETH,
+    setupPermit2ForSell,
     UNIVERSAL_ROUTER_ADDRESS,
+    PERMIT2_ADDRESS,
 } = require("../utils/universalRouter");
 
 const TOKEN_ABI = [
@@ -37,9 +40,7 @@ const TOKEN_ABI = [
     "function symbol() view returns (string)"
 ];
 
-const ROUTER_ABI = [
-    "function swapExactTokensForETH(uint256 amountIn, uint256 amountOutMin, address[] path, address to, uint256 deadline) returns (uint256[] amounts)"
-];
+// V2 Router ABI no longer needed - using V4 Universal Router for all swaps
 
 async function main() {
     printDisclaimer();
@@ -63,7 +64,6 @@ async function main() {
 
     const tokenDeployer = new ethers.Contract(config.token, TOKEN_ABI, deployer);
     const tokenBuyer = new ethers.Contract(config.token, TOKEN_ABI, buyer);
-    const v2Router = new ethers.Contract(network.uniswapV2.router, ROUTER_ABI, buyer);
     const v4Router = getUniversalRouter(buyer);
 
     const tokenSymbol = await tokenDeployer.symbol();
@@ -154,9 +154,9 @@ async function main() {
     }
     console.log("");
 
-    // Now test sell via V2 (simpler for before-fees test)
+    // Now test sell via V4 Universal Router
     console.log("=".repeat(70));
-    console.log("TEST: SELL via V2 BEFORE FEES ENABLED");
+    console.log("TEST: SELL via V4 BEFORE FEES ENABLED");
     console.log("=".repeat(70));
     console.log("");
 
@@ -167,17 +167,23 @@ async function main() {
         console.log(`Not enough tokens to sell. Have: ${ethers.formatEther(buyerAfterBuy)}`);
         console.log("Skipping sell test.");
     } else {
-        // Approve V2 Router
-        await (await tokenBuyer.approve(network.uniswapV2.router, sellAmount)).wait();
-        console.log("Approved V2 router");
+        // Setup Permit2 for V4 Universal Router
+        console.log("Setting up Permit2 approvals for V4 Universal Router...");
+        await setupPermit2ForSell(tokenBuyer, config.token, buyer);
+        console.log("Permit2 approved");
 
-        const sellPath = [config.token, network.weth];
-
-        console.log(`Selling ${ethers.formatEther(sellAmount)} ${tokenSymbol} via V2...`);
+        console.log(`Selling ${ethers.formatEther(sellAmount)} ${tokenSymbol} via V4 Universal Router...`);
 
         try {
-            const sellTx = await v2Router.swapExactTokensForETH(
-                sellAmount, 0, sellPath, buyer.address, deadline
+            // Use sellTokensForETH (not sellFeeTokensForETH) since no fees yet
+            const sellTx = await sellTokensForETH(
+                v4Router,
+                config.token,
+                network.weth,
+                buyer.address,
+                sellAmount,
+                0n,
+                deadline
             );
             await sellTx.wait();
             console.log("Sell executed!");
@@ -229,7 +235,7 @@ async function main() {
     console.log("│ Test            │ Expected     │ Actual       │ Status │");
     console.log("├─────────────────┼──────────────┼──────────────┼────────┤");
     console.log(`│ BUY via V4      │ 0.00%        │ ${buyFeePercent.padStart(10)}%  │ ${buyFeesApplied ? "  FAIL" : "  PASS"} │`);
-    console.log(`│ SELL via V2     │ 0.00%        │ ${sellFeesApplied ? "  >0.00" : "   0.00"}%  │ ${sellFeesApplied ? "  FAIL" : "  PASS"} │`);
+    console.log(`│ SELL via V4     │ 0.00%        │ ${sellFeesApplied ? "  >0.00" : "   0.00"}%  │ ${sellFeesApplied ? "  FAIL" : "  PASS"} │`);
     console.log("└─────────────────┴──────────────┴──────────────┴────────┘");
     console.log("");
 

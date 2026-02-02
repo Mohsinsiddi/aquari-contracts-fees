@@ -44,17 +44,37 @@ If you are NOT the owner, transactions will FAIL.
 | `npx hardhat run scripts/simulation/status.js --network fork` | Show all simulation status | ✅ | PASS |
 | `npx hardhat run scripts/simulation/run_all_simulations.js --network fork` | Run all 5 simulations | ✅ | 5/5 PASS |
 
-### Fork Test Suite (--network fork)
+### Fork Test Suite - Modes (--network fork)
 
-| Command | Description | Tested | Result |
-|---------|-------------|--------|--------|
-| `npx hardhat run scripts/fork-test/run-all.js --network fork` | Comprehensive E2E test (32 tests) | ✅ | 28/28 PASS |
+| Mode | Command | Owner Key | Tested | Result |
+|------|---------|-----------|--------|--------|
+| Default | `npx hardhat run scripts/fork-test/run-all.js --network fork` | ❌ Not needed | ✅ | 28/28 PASS |
+| `NEW_TOKEN=true` | `NEW_TOKEN=true npx hardhat run ... --network fork` | ❌ Not needed | ✅ | 28/28 PASS |
+| `TEST_MODE=simulate` | `TEST_MODE=simulate npx hardhat run ... --network fork` | ❌ Not needed | ✅ | 28/28 PASS |
+| `TEST_MODE=mainnet` | `TEST_MODE=mainnet npx hardhat run ... --network fork` | ✅ Required | ❌ | Needs owner key |
+
+**Mode Details:**
+
+| Mode | What It Does | You Are Owner? | Tests All Edge Cases? |
+|------|--------------|----------------|----------------------|
+| **Default** | Deploys fresh `AquariProtocol` (same code as mainnet) | ✅ YES | ✅ YES |
+| **`NEW_TOKEN=true`** | Same as default, explicit flag | ✅ YES | ✅ YES |
+| **`TEST_MODE=simulate`** | Deploys fresh contract for isolated testing | ✅ YES | ✅ YES |
+| **`TEST_MODE=mainnet`** | Tests REAL AQUARI (`0x7f0e9971...`) | ❌ NO | ❌ Limited |
+
+**Important:** Default/NEW_TOKEN/simulate modes deploy a **fresh contract** where **YOU become the owner**. No external private key needed - tests the full admin flow including:
+- `setTaxConfig()` - set fees
+- `setUniswapV2Pair()` - enable fees (one-time)
+- `setFoundationWallet()` - change wallet
+- All edge cases (0%, 10%, 50% fees)
+
+**Note:** Use environment variables since hardhat doesn't support `--` arg passing.
 
 ### Mainnet Scripts (--network base)
 
 | Command | Description | Tested | Result |
 |---------|-------------|--------|--------|
-| `npx hardhat run scripts/mainnet-execution/1_verify_before.js --network base` | Pre-flight checks (READ ONLY) | ⚠️ | Ready |
+| `npx hardhat run scripts/mainnet-execution/1_verify_before.js --network base` | Pre-flight checks (READ ONLY) | ✅ | PASS |
 | `npx hardhat run scripts/mainnet-execution/2_set_fees.js --network base` | Set tax configuration | ⚠️ | Ready |
 | `npx hardhat run scripts/mainnet-execution/3_enable_fees.js --network base` | Enable fees (IRREVERSIBLE!) | ⚠️ | Ready |
 | `npx hardhat run scripts/mainnet-execution/4_verify_after.js --network base` | Post-enable verification | ⚠️ | Ready |
@@ -63,16 +83,52 @@ If you are NOT the owner, transactions will FAIL.
 
 ---
 
-## Quick Start
+## Quick Start (3 Steps)
 
-### 1. Start Fork (Docker)
+### 1. Setup Environment
 
 ```bash
-# Start Anvil fork of Base mainnet
+# Copy example env file
+cp .env.example .env
+
+# Edit .env file - add your key for mainnet operations (optional for fork tests)
+# ADMIN_KEY=your_private_key_here
+```
+
+### 2. Start Docker Fork
+
+```bash
+# Start Anvil fork of Base mainnet (uses docker-compose.yml)
 docker compose up -d
 
-# Verify fork is running
-docker compose ps
+# Verify it's running (should show "healthy")
+docker ps | grep aquari-fork
+
+# Restart fork for fresh state (between test runs)
+docker restart aquari-fork
+```
+
+### 3. Run Tests
+
+```bash
+# Quick test (28/28 tests, no owner key needed)
+npx hardhat run scripts/fork-test/run-all.js --network fork
+
+# Or with explicit mode
+NEW_TOKEN=true npx hardhat run scripts/fork-test/run-all.js --network fork
+```
+
+---
+
+## All Commands
+
+### Start/Stop Docker Fork
+
+```bash
+docker compose up -d        # Start fork
+docker compose down         # Stop fork
+docker restart aquari-fork  # Restart for fresh state
+docker logs aquari-fork     # View logs
 ```
 
 ### 2. Run Individual Simulation Steps
@@ -96,10 +152,20 @@ npx hardhat run scripts/simulation/6_verify_state.js --network fork
 npx hardhat run scripts/simulation/run_all_simulations.js --network fork
 ```
 
-### 4. Run Comprehensive Fork Test
+### 4. Run Fork Test Suite (4 Modes)
 
 ```bash
+# Mode 1: Default (Recommended) - Deploy fresh token, YOU are owner
 npx hardhat run scripts/fork-test/run-all.js --network fork
+
+# Mode 2: NEW_TOKEN=true - Explicit new token deployment
+TEST_MODE=mainnet NEW_TOKEN=true npx hardhat run scripts/fork-test/run-all.js --network fork
+
+# Mode 3: TEST_MODE=simulate - Edge case testing (isolated)
+TEST_MODE=simulate npx hardhat run scripts/fork-test/run-all.js --network fork
+
+# Mode 4: TEST_MODE=mainnet - Test REAL AQUARI (Requires owner key!)
+TEST_MODE=mainnet npx hardhat run scripts/fork-test/run-all.js --network fork
 ```
 
 ### 5. Mainnet Execution (Production)
@@ -112,6 +178,39 @@ npx hardhat run scripts/mainnet-execution/2_set_fees.js --network base
 npx hardhat run scripts/mainnet-execution/3_enable_fees.js --network base  # ⚠️ IRREVERSIBLE!
 npx hardhat run scripts/mainnet-execution/4_verify_after.js --network base
 ```
+
+---
+
+## Complete Test Matrix
+
+### All Test Modes Status
+
+| Category | Mode/Command | Tested | Result | Notes |
+|----------|--------------|--------|--------|-------|
+| **Simulation** | `run_all_simulations.js --network fork` | ✅ | 5/5 PASS | All 5 scenarios |
+| **Fork Test** | Default (fresh deploy, you=owner) | ✅ | 28/28 PASS | Full edge cases |
+| **Fork Test** | `NEW_TOKEN=true` (fresh deploy, you=owner) | ✅ | 28/28 PASS | Full edge cases |
+| **Fork Test** | `TEST_MODE=simulate` (fresh deploy, you=owner) | ✅ | 28/28 PASS | Full edge cases |
+| **Fork Test** | `TEST_MODE=mainnet` (real AQUARI) | ❌ | Not tested | Requires real owner key |
+| **Mainnet** | `1_verify_before.js --network base` | ✅ | PASS | READ ONLY |
+| **Mainnet** | `2_set_fees.js --network base` | ❌ | Not tested | Requires owner key |
+| **Mainnet** | `3_enable_fees.js --network base` | ❌ | Not tested | Requires owner key |
+| **Mainnet** | `4_verify_after.js --network base` | ❌ | Not tested | After fees enabled |
+
+### Edge Cases Tested (in Default/NEW_TOKEN/simulate modes)
+
+| Edge Case | Expected | Actual | Result |
+|-----------|----------|--------|--------|
+| Zero Fees (0/0) | 0% | 0% | ✅ PASS |
+| Production Fees (2.5%) | 2.5% | 2.49-2.50% | ✅ PASS |
+| High Fees (10%) | 10% | 9.99% | ✅ PASS |
+| Extreme Fees (50%) | 50% | 49.99% | ✅ PASS |
+| Owner Exclusion | No fees | No fees | ✅ PASS |
+| Non-owner Security | Revert | Revert | ✅ PASS |
+| Second setUniswapV2Pair | Revert | Revert | ✅ PASS |
+| Regular swap for sell | Revert (K) | Revert (K) | ✅ PASS |
+
+**Legend:** ✅ Tested & Passed | ❌ Not Yet Tested
 
 ---
 
