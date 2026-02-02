@@ -26,7 +26,7 @@ module.exports = {
 
     // Base Mainnet (production)
     base: {
-      url: process.env.BASE_RPC || "https://mainnet.base.org",
+      url: process.env.BASE_RPC || "https://base-mainnet.public.blastapi.io",
       chainId: 8453,
       accounts: process.env.ADMIN_KEY ? [process.env.ADMIN_KEY] : [],
     },
