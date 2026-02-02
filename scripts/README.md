@@ -52,6 +52,7 @@ If you are NOT the owner, transactions will FAIL.
 | `NEW_TOKEN=true` | `NEW_TOKEN=true npx hardhat run ... --network fork` | ❌ Not needed | ✅ | 28/28 PASS |
 | `TEST_MODE=simulate` | `TEST_MODE=simulate npx hardhat run ... --network fork` | ❌ Not needed | ✅ | 28/28 PASS |
 | `TEST_MODE=mainnet` | `TEST_MODE=mainnet npx hardhat run ... --network fork` | ✅ Required | ❌ | Needs owner key |
+| **Impersonate Owner** | `npx hardhat run scripts/fork-test/test-real-aquari.js --network fork` | ❌ Not needed | ✅ | **Tests REAL contract!** |
 
 **Mode Details:**
 
@@ -111,11 +112,15 @@ docker restart aquari-fork
 ### 3. Run Tests
 
 ```bash
-# Quick test (28/28 tests, no owner key needed)
+# Quick test (28/28 tests, deploys fresh token)
 npx hardhat run scripts/fork-test/run-all.js --network fork
+
+# Test REAL mainnet AQUARI (impersonates owner - RECOMMENDED!)
+npx hardhat run scripts/fork-test/test-real-aquari.js --network fork
 
 # Or with explicit mode
 NEW_TOKEN=true npx hardhat run scripts/fork-test/run-all.js --network fork
+TEST_MODE=simulate npx hardhat run scripts/fork-test/run-all.js --network fork
 ```
 
 ---
