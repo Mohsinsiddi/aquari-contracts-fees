@@ -1,528 +1,433 @@
 # AQUARI Scripts
 
-## Quick Start (Test REAL Mainnet Contract)
+Complete guide for testing and deploying AQUARI fee-on-transfer token on Base mainnet.
+
+---
+
+## Table of Contents
+
+1. [Prerequisites](#prerequisites)
+2. [Quick Start - Fork Testing](#quick-start---fork-testing)
+3. [Test Token (AQTEST) Deployment](#test-token-aqtest-deployment)
+4. [Mainnet AQUARI Fee Enablement](#mainnet-aquari-fee-enablement)
+5. [All Commands Reference](#all-commands-reference)
+6. [Troubleshooting](#troubleshooting)
+
+---
+
+## Prerequisites
+
+### 1. Install Dependencies
 
 ```bash
-# 1. Setup
-cp .env.example .env
 npm install
-
-# 2. Start Docker fork
-docker compose up -d
-
-# 3. Test REAL mainnet AQUARI (impersonates owner - no key needed!)
-docker restart aquari-fork && npx hardhat run scripts/fork-test/test-real-aquari.js --network fork
-
-# 4. Test FULL Mainnet Execution Flow on Fork (RECOMMENDED BEFORE MAINNET!)
-docker restart aquari-fork
-npx hardhat run scripts/mainnet-execution/1_verify_before.js --network fork
-npx hardhat run scripts/mainnet-execution/2_set_fees.js --network fork
-npx hardhat run scripts/mainnet-execution/2b_test_trading_before.js --network fork  # Verify 0% fee
-npx hardhat run scripts/mainnet-execution/3_enable_fees.js --network fork
-npx hardhat run scripts/mainnet-execution/4_verify_after.js --network fork
-npx hardhat run scripts/mainnet-execution/5_test_trading_after.js --network fork    # Verify 2.5% fee
 ```
 
-This tests the **actual deployed AQUARI contract** (`0x7f0e9971...`) on a fork by impersonating the real owner (`0x187ED96248Bbbbf4D5b059187e030B7511b67801`). Shows:
-- Contract state, LP reserves, token balances
-- setTaxConfig() and setUniswapV2Pair() execution
-- BUY/SELL via V4 Universal Router with fees
-- Reserve changes after each swap
-
----
-
-## Disclaimer
-
-```
-⚠️  IMPORTANT - READ BEFORE RUNNING ANY SCRIPT ⚠️
-═══════════════════════════════════════════════════
-
-1. You must be the CONTRACT OWNER or have ADMIN ACCESS
-2. Verify your private key is correctly set in .env file
-3. setUniswapV2Pair() is IRREVERSIBLE - cannot be undone!
-4. If you set the WRONG pair address, fees will NEVER work
-
-If you are NOT the owner, transactions will FAIL.
-```
-
----
-
-## Commands Overview
-
-### Available Networks
-
-| Network Flag | Description | Use For |
-|-------------|-------------|---------|
-| `--network fork` | Anvil fork of Base mainnet | Testing (RECOMMENDED) |
-| `--network base` | Real Base mainnet | Production (CAREFUL!) |
-
----
-
-## All Commands & Test Status
-
-### Simulation Scripts (--network fork)
-
-| Command | Description | Tested | Result |
-|---------|-------------|--------|--------|
-| `npx hardhat run scripts/simulation/0_deploy.js --network fork` | Deploy test token | ✅ | PASS |
-| `npx hardhat run scripts/simulation/1_add_liquidity.js --network fork` | Create pair + add LP | ✅ | PASS |
-| `npx hardhat run scripts/simulation/2_set_tax_config.js --network fork` | Set burn + foundation fees | ✅ | PASS |
-| `npx hardhat run scripts/simulation/2b_test_before_fees.js --network fork` | Test BUY/SELL before fees (V4) | ✅ | PASS (0%) |
-| `npx hardhat run scripts/simulation/3_set_pair.js --network fork` | Enable fees (IRREVERSIBLE!) | ✅ | PASS |
-| `npx hardhat run scripts/simulation/4_test_buy.js --network fork` | Test BUY via V4 Router | ✅ | PASS (2.49%) |
-| `npx hardhat run scripts/simulation/5_test_sell.js --network fork` | Test SELL via V4 + Permit2 | ✅ | PASS (2.50%) |
-| `npx hardhat run scripts/simulation/6_verify_state.js --network fork` | Verify final state | ✅ | PASS |
-| `npx hardhat run scripts/simulation/status.js --network fork` | Show all simulation status | ✅ | PASS |
-| `npx hardhat run scripts/simulation/run_all_simulations.js --network fork` | Run all 5 simulations | ✅ | 5/5 PASS |
-
-### Fork Test Suite - Modes (--network fork)
-
-| Mode | Command | Owner Key | Tested | Result |
-|------|---------|-----------|--------|--------|
-| Default | `npx hardhat run scripts/fork-test/run-all.js --network fork` | ❌ Not needed | ✅ | 28/28 PASS |
-| `NEW_TOKEN=true` | `NEW_TOKEN=true npx hardhat run ... --network fork` | ❌ Not needed | ✅ | 28/28 PASS |
-| `TEST_MODE=simulate` | `TEST_MODE=simulate npx hardhat run ... --network fork` | ❌ Not needed | ✅ | 28/28 PASS |
-| `TEST_MODE=mainnet` | `TEST_MODE=mainnet npx hardhat run ... --network fork` | ✅ Required | ❌ | Needs owner key |
-| **Impersonate Owner** | `npx hardhat run scripts/fork-test/test-real-aquari.js --network fork` | ❌ Not needed | ✅ | **Tests REAL contract!** |
-
-**Mode Details:**
-
-| Mode | What It Does | You Are Owner? | Tests All Edge Cases? |
-|------|--------------|----------------|----------------------|
-| **Default** | Deploys fresh `AquariProtocol` (same code as mainnet) | ✅ YES | ✅ YES |
-| **`NEW_TOKEN=true`** | Same as default, explicit flag | ✅ YES | ✅ YES |
-| **`TEST_MODE=simulate`** | Deploys fresh contract for isolated testing | ✅ YES | ✅ YES |
-| **`TEST_MODE=mainnet`** | Tests REAL AQUARI (`0x7f0e9971...`) | ❌ NO | ❌ Limited |
-
-**Important:** Default/NEW_TOKEN/simulate modes deploy a **fresh contract** where **YOU become the owner**. No external private key needed - tests the full admin flow including:
-- `setTaxConfig()` - set fees
-- `setUniswapV2Pair()` - enable fees (one-time)
-- `setFoundationWallet()` - change wallet
-- All edge cases (0%, 10%, 50% fees)
-
-**Note:** Use environment variables since hardhat doesn't support `--` arg passing.
-
-### Mainnet Execution Scripts (--network fork OR --network base)
-
-**NEW:** All mainnet-execution scripts now support **fork testing with owner impersonation!**
-
-| Step | Script | Description | Expected Fee |
-|------|--------|-------------|--------------|
-| 1 | `1_verify_before.js` | Pre-flight checks (READ ONLY) | - |
-| 2 | `2_set_fees.js` | Set tax configuration | - |
-| **2b** | **`2b_test_trading_before.js`** | **Test BUY/SELL via V4** | **0%** |
-| 3 | `3_enable_fees.js` | Enable fees (⚠️ IRREVERSIBLE!) | - |
-| 4 | `4_verify_after.js` | Post-enable verification | - |
-| **5** | **`5_test_trading_after.js`** | **Test BUY/SELL via V4** | **2.5%** |
-
-| Command | Network | Owner Key |
-|---------|---------|-----------|
-| `npx hardhat run scripts/mainnet-execution/1_verify_before.js --network fork` | Fork | ❌ No |
-| `npx hardhat run scripts/mainnet-execution/2_set_fees.js --network fork` | Fork | ❌ No |
-| `npx hardhat run scripts/mainnet-execution/2b_test_trading_before.js --network fork` | Fork | ❌ No |
-| `npx hardhat run scripts/mainnet-execution/3_enable_fees.js --network fork` | Fork | ❌ No |
-| `npx hardhat run scripts/mainnet-execution/4_verify_after.js --network fork` | Fork | ❌ No |
-| `npx hardhat run scripts/mainnet-execution/5_test_trading_after.js --network fork` | Fork | ❌ No |
-| `npx hardhat run scripts/mainnet-execution/*.js --network base` | **MAINNET** | ✅ Yes |
-
-**Key Difference:**
-- `--network fork`: Impersonates real owner (`0x187ED96248Bbbbf4D5b059187e030B7511b67801`), no key needed
-- `--network base`: Uses your private key from `.env`, must be the real owner
-
-**Legend:** ✅ Fully Tested | ⚠️ Not Yet Executed (ready for production)
-
----
-
-## Quick Start (3 Steps)
-
-### 1. Setup Environment
+### 2. Setup Environment
 
 ```bash
 # Copy example env file
 cp .env.example .env
 
-# Edit .env file - add your key for mainnet operations (optional for fork tests)
+# Edit .env - add your private key (required for mainnet, optional for fork)
 # ADMIN_KEY=your_private_key_here
+# BASE_RPC=https://mainnet.base.org
+# BASESCAN_API_KEY=your_api_key
 ```
 
-### 2. Start Docker Fork
+### 3. Start Docker Fork (Required for Testing)
 
 ```bash
-# Start Anvil fork of Base mainnet (uses docker-compose.yml)
+# Start Anvil fork of Base mainnet
 docker compose up -d
 
 # Verify it's running (should show "healthy")
 docker ps | grep aquari-fork
 
-# Restart fork for fresh state (between test runs)
-docker restart aquari-fork
+# Check logs if needed
+docker logs aquari-fork
 ```
 
-### 3. Run Tests
+### 4. Docker Commands Reference
 
 ```bash
-# Quick test (28/28 tests, deploys fresh token)
-npx hardhat run scripts/fork-test/run-all.js --network fork
+docker compose up -d        # Start fork node
+docker compose down         # Stop fork node
+docker restart aquari-fork  # Restart for FRESH state (important!)
+docker logs aquari-fork     # View logs
+docker ps                   # Check status
+```
 
-# Test REAL mainnet AQUARI (impersonates owner - RECOMMENDED!)
-npx hardhat run scripts/fork-test/test-real-aquari.js --network fork
+> ⚠️ **IMPORTANT:** Always run `docker restart aquari-fork` before starting a new test sequence to get fresh blockchain state!
 
-# Or with explicit mode
-NEW_TOKEN=true npx hardhat run scripts/fork-test/run-all.js --network fork
-TEST_MODE=simulate npx hardhat run scripts/fork-test/run-all.js --network fork
+---
+
+## Quick Start - Fork Testing
+
+Test the REAL mainnet AQUARI contract on a fork (no private key needed - impersonates owner).
+
+### End-to-End Fork Test (5 minutes)
+
+```bash
+# ═══════════════════════════════════════════════════════════════════════════════
+# STEP 1: Start fresh fork
+# ═══════════════════════════════════════════════════════════════════════════════
+docker restart aquari-fork && sleep 3
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# STEP 2: Verify current state (READ ONLY)
+# ═══════════════════════════════════════════════════════════════════════════════
+npx hardhat run scripts/mainnet-execution/1_verify_before.js --network fork
+
+# Expected output:
+#   ✅ You ARE the owner (impersonated)
+#   ✅ pairIsSet is false
+#   ✅ Trading is enabled
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# STEP 3: Set tax configuration (125 bps burn + 125 bps foundation = 2.5%)
+# ═══════════════════════════════════════════════════════════════════════════════
+npx hardhat run scripts/mainnet-execution/2_set_fees.js --network fork
+
+# Expected output:
+#   ✅ Tax configuration set!
+#   burnTax: 125 bps (1.25%)
+#   foundationFee: 125 bps (1.25%)
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# STEP 4: Test trading BEFORE fees enabled (should be 0% fee)
+# ═══════════════════════════════════════════════════════════════════════════════
+npx hardhat run scripts/mainnet-execution/2b_test_trading_before.js --network fork
+
+# Expected output:
+#   ✅ BUY fee is 0.00%
+#   ✅ SELL fee is 0.00%
+#   (pairIsSet = false, so fees don't apply yet)
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# STEP 5: Enable fees (set pair address) - IRREVERSIBLE on mainnet!
+# ═══════════════════════════════════════════════════════════════════════════════
+npx hardhat run scripts/mainnet-execution/3_enable_fees.js --network fork
+
+# Expected output:
+#   🔵 FORK MODE: Auto-proceeding (no confirmation needed)
+#   ✅ Pair set! FEES ARE NOW ACTIVE!
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# STEP 6: Verify fees are enabled
+# ═══════════════════════════════════════════════════════════════════════════════
+npx hardhat run scripts/mainnet-execution/4_verify_after.js --network fork
+
+# Expected output:
+#   pairIsSet: true ✅ FEES ENABLED
+#   Burn Tax: 125 bps (1.25%)
+#   Foundation Fee: 125 bps (1.25%)
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# STEP 7: Test trading AFTER fees enabled (should be 2.5% fee)
+# ═══════════════════════════════════════════════════════════════════════════════
+npx hardhat run scripts/mainnet-execution/5_test_trading_after.js --network fork
+
+# Expected output:
+#   ✅ BUY fee is 2.50%
+#   ✅ SELL fee is 2.50%
+#   ✅ Foundation received tokens
+#   ✅ Tokens were burned
+#   🎉 FEE SYSTEM IS FULLY OPERATIONAL! 🎉
+```
+
+### One-Line Full Test
+
+```bash
+docker restart aquari-fork && sleep 3 && \
+npx hardhat run scripts/mainnet-execution/1_verify_before.js --network fork && \
+npx hardhat run scripts/mainnet-execution/2_set_fees.js --network fork && \
+npx hardhat run scripts/mainnet-execution/2b_test_trading_before.js --network fork && \
+npx hardhat run scripts/mainnet-execution/3_enable_fees.js --network fork && \
+npx hardhat run scripts/mainnet-execution/4_verify_after.js --network fork && \
+npx hardhat run scripts/mainnet-execution/5_test_trading_after.js --network fork
 ```
 
 ---
 
-## All Commands
+## Test Token (AQTEST) Deployment
 
-### Start/Stop Docker Fork
+Deploy a test token on Base mainnet to verify fee behavior via Uniswap UI trades.
+
+### Why Use Test Token?
+
+- Test on **real Base mainnet** (not fork)
+- Trade via **Uniswap UI** to verify real user experience
+- Test fees **before** and **after** enabling
+- No risk to real AQUARI contract
+
+### End-to-End Test Token Deployment
 
 ```bash
-docker compose up -d        # Start fork
-docker compose down         # Stop fork
-docker restart aquari-fork  # Restart for fresh state
-docker logs aquari-fork     # View logs
+# ═══════════════════════════════════════════════════════════════════════════════
+# STEP 1: Deploy AquariTest (AQTEST) to Base mainnet
+# ═══════════════════════════════════════════════════════════════════════════════
+npx hardhat run scripts/test-token/1_deploy.js --network base
+
+# Expected output:
+#   ✅ Deployment successful!
+#   Proxy: 0x...
+#   Name: Aquari Test (AQTEST)
+#   Total Supply: 100,000,000 AQTEST
+#   State saved to: scripts/test-token/state.json
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# STEP 2: Add liquidity (0.01 ETH + 1,000,000 AQTEST)
+# ═══════════════════════════════════════════════════════════════════════════════
+npx hardhat run scripts/test-token/2_add_liquidity.js --network base
+
+# Expected output:
+#   ✅ Liquidity added!
+#   Pair Address: 0x...
+#   AQTEST Reserve: 1,000,000
+#   ETH Reserve: 0.01
+#   State saved to: scripts/test-token/state.json
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# STEP 3: Verify state
+# ═══════════════════════════════════════════════════════════════════════════════
+npx hardhat run scripts/test-token/3_verify_state.js --network base
+
+# Expected output:
+#   ✅ Contract deployed
+#   ✅ LP created
+#   ✅ Trading enabled
+#   ○ Fees enabled (pairIsSet = false)
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# STEP 4: TEST ON UNISWAP UI (WITHOUT FEES)
+# ═══════════════════════════════════════════════════════════════════════════════
+# 1. Go to https://app.uniswap.org
+# 2. Connect wallet, select Base network
+# 3. Import token using proxy address from state.json
+# 4. Swap ETH → AQTEST (BUY) or AQTEST → ETH (SELL)
+# 5. Verify: NO FEE deducted (you receive 100% of expected tokens)
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# STEP 5: Enable fees (set foundation wallet + pair + tax config)
+# ═══════════════════════════════════════════════════════════════════════════════
+npx hardhat run scripts/test-token/4_configure.js --network base
+
+# Expected output:
+#   ✅ Foundation wallet updated! (0x802D8097eC1D49808F3c2c866020442891adde57)
+#   ✅ Tax config updated! (125 + 125 = 2.5%)
+#   ✅ Pair set! FEES ARE NOW ACTIVE!
+#   🎉 Ready to trade on Uniswap UI with 2.5% fees! 🎉
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# STEP 6: TEST ON UNISWAP UI (WITH FEES)
+# ═══════════════════════════════════════════════════════════════════════════════
+# 1. Trade on Uniswap again
+# 2. Verify: 2.5% FEE deducted (you receive ~97.5% of expected tokens)
+# 3. Check foundation wallet received 1.25%
+# 4. Check total supply decreased (1.25% burned)
 ```
 
-### 2. Run Individual Simulation Steps
+### Test Token Configuration
 
-```bash
-# Edit config.js - set ACTIVE_SIMULATION = 1 (or 2,3,4,5)
+Edit `scripts/test-token/config.js` to change settings:
 
-npx hardhat run scripts/simulation/0_deploy.js --network fork
-npx hardhat run scripts/simulation/1_add_liquidity.js --network fork
-npx hardhat run scripts/simulation/2_set_tax_config.js --network fork
-npx hardhat run scripts/simulation/2b_test_before_fees.js --network fork  # Verify 0% before enable
-npx hardhat run scripts/simulation/3_set_pair.js --network fork           # ⚠️ IRREVERSIBLE
-npx hardhat run scripts/simulation/4_test_buy.js --network fork           # V4 Universal Router
-npx hardhat run scripts/simulation/5_test_sell.js --network fork          # V4 + Permit2
-npx hardhat run scripts/simulation/6_verify_state.js --network fork
+```javascript
+const CONFIG = {
+    liquidityETH: "0.01",           // ETH for initial LP
+    liquidityTokens: "1000000",     // Tokens for initial LP (1 million)
+    newFoundationWallet: "0x802D8097eC1D49808F3c2c866020442891adde57",
+    taxConfig: {
+        burnTax: 125,        // 1.25%
+        foundationFee: 125,  // 1.25%
+    },
+};
 ```
 
-### 3. Run All 5 Simulations (Recommended)
+### Test Token State File
 
-```bash
-npx hardhat run scripts/simulation/run_all_simulations.js --network fork
+All addresses are saved to `scripts/test-token/state.json`:
+
+```json
+{
+  "deployed": true,
+  "proxy": "0x...",
+  "implementation": "0x...",
+  "owner": "0x...",
+  "pair": "0x...",
+  "lpAdded": true,
+  "feesEnabled": true
+}
 ```
 
-### 4. Run Fork Test Suite (4 Modes)
+---
 
-```bash
-# Mode 1: Default (Recommended) - Deploy fresh token, YOU are owner
-npx hardhat run scripts/fork-test/run-all.js --network fork
+## Mainnet AQUARI Fee Enablement
 
-# Mode 2: NEW_TOKEN=true - Explicit new token deployment
-TEST_MODE=mainnet NEW_TOKEN=true npx hardhat run scripts/fork-test/run-all.js --network fork
+Enable fees on the **real AQUARI token** on Base mainnet.
 
-# Mode 3: TEST_MODE=simulate - Edge case testing (isolated)
-TEST_MODE=simulate npx hardhat run scripts/fork-test/run-all.js --network fork
+### ⚠️ IMPORTANT WARNINGS
 
-# Mode 4: TEST_MODE=mainnet - Test REAL AQUARI (Requires owner key!)
-TEST_MODE=mainnet npx hardhat run scripts/fork-test/run-all.js --network fork
+```
+╔═══════════════════════════════════════════════════════════════════════════════╗
+║  1. You must be the CONTRACT OWNER                                             ║
+║  2. setUniswapV2Pair() is IRREVERSIBLE - cannot be changed after!             ║
+║  3. If you set WRONG pair address, fees will NEVER work                       ║
+║  4. TEST ON FORK FIRST before running on mainnet!                             ║
+╚═══════════════════════════════════════════════════════════════════════════════╝
 ```
 
-### 5. Mainnet Execution (Fork Test + Production)
+### Pre-Flight Checklist
+
+- [ ] Tested all scripts on fork successfully
+- [ ] Verified you are the owner
+- [ ] Verified pair address matches factory pair
+- [ ] Verified tax config is correct (125 + 125 = 250 bps = 2.5%)
+- [ ] Have someone double-check all addresses
+- [ ] Understand that setUniswapV2Pair is IRREVERSIBLE
+
+### Mainnet Execution
 
 ```bash
-# ═══════════════════════════════════════════════════════════════════════════
-# STEP A: Test FULL FLOW on Fork FIRST (No key needed - impersonates owner!)
-# ═══════════════════════════════════════════════════════════════════════════
-docker restart aquari-fork  # Fresh fork state
-
-# 1. Verify state
-npx hardhat run scripts/mainnet-execution/1_verify_before.js --network fork
-
-# 2. Set fees
-npx hardhat run scripts/mainnet-execution/2_set_fees.js --network fork
-
-# 2b. Test trading BEFORE enabling (should be 0% fee)
-npx hardhat run scripts/mainnet-execution/2b_test_trading_before.js --network fork
-
-# 3. Enable fees (auto-proceeds on fork)
-npx hardhat run scripts/mainnet-execution/3_enable_fees.js --network fork
-
-# 4. Verify fees enabled
-npx hardhat run scripts/mainnet-execution/4_verify_after.js --network fork
-
-# 5. Test trading AFTER enabling (should be 2.5% fee)
-npx hardhat run scripts/mainnet-execution/5_test_trading_after.js --network fork
-
-# ═══════════════════════════════════════════════════════════════════════════
-# STEP B: Execute on REAL Mainnet (Requires owner key in .env!)
-# ═══════════════════════════════════════════════════════════════════════════
+# ═══════════════════════════════════════════════════════════════════════════════
+# STEP 1: Verify current state (READ ONLY)
+# ═══════════════════════════════════════════════════════════════════════════════
 npx hardhat run scripts/mainnet-execution/1_verify_before.js --network base
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# STEP 2: Set tax configuration
+# ═══════════════════════════════════════════════════════════════════════════════
 npx hardhat run scripts/mainnet-execution/2_set_fees.js --network base
-npx hardhat run scripts/mainnet-execution/2b_test_trading_before.js --network base  # Optional
-npx hardhat run scripts/mainnet-execution/3_enable_fees.js --network base  # ⚠️ IRREVERSIBLE!
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# STEP 3: Enable fees (⚠️ IRREVERSIBLE!)
+# ═══════════════════════════════════════════════════════════════════════════════
+npx hardhat run scripts/mainnet-execution/3_enable_fees.js --network base
+
+# You will be prompted: Type 'ENABLE FEES' to proceed
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# STEP 4: Verify fees are enabled
+# ═══════════════════════════════════════════════════════════════════════════════
 npx hardhat run scripts/mainnet-execution/4_verify_after.js --network base
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# STEP 5: Test trading (optional - costs real ETH)
+# ═══════════════════════════════════════════════════════════════════════════════
 npx hardhat run scripts/mainnet-execution/5_test_trading_after.js --network base
 ```
 
 ---
 
-## Complete Test Matrix
+## All Commands Reference
 
-### All Test Modes Status
+### Docker Commands
 
-| Category | Mode/Command | Tested | Result | Notes |
-|----------|--------------|--------|--------|-------|
-| **Simulation** | `run_all_simulations.js --network fork` | ✅ | 5/5 PASS | All 5 scenarios |
-| **Fork Test** | Default (fresh deploy, you=owner) | ✅ | 28/28 PASS | Full edge cases |
-| **Fork Test** | `NEW_TOKEN=true` (fresh deploy, you=owner) | ✅ | 28/28 PASS | Full edge cases |
-| **Fork Test** | `TEST_MODE=simulate` (fresh deploy, you=owner) | ✅ | 28/28 PASS | Full edge cases |
-| **Fork Test** | `TEST_MODE=mainnet` (real AQUARI) | ❌ | Not tested | Requires real owner key |
-| **Mainnet Fork** | `1_verify_before.js --network fork` | ✅ | PASS | Impersonates owner |
-| **Mainnet Fork** | `2_set_fees.js --network fork` | ✅ | PASS | Impersonates owner |
-| **Mainnet Fork** | `2b_test_trading_before.js --network fork` | ✅ | PASS | **0% fee** (pairIsSet=false) |
-| **Mainnet Fork** | `3_enable_fees.js --network fork` | ✅ | PASS | Impersonates owner, auto-proceeds |
-| **Mainnet Fork** | `4_verify_after.js --network fork` | ✅ | PASS | Impersonates owner |
-| **Mainnet Fork** | `5_test_trading_after.js --network fork` | ✅ | PASS | **2.5% fee** (pairIsSet=true) |
-| **Mainnet Real** | `1_verify_before.js --network base` | ✅ | PASS | READ ONLY |
-| **Mainnet Real** | `2_set_fees.js --network base` | ⚠️ | Ready | Requires owner key |
-| **Mainnet Real** | `3_enable_fees.js --network base` | ⚠️ | Ready | Requires owner key |
-| **Mainnet Real** | `4_verify_after.js --network base` | ⚠️ | Ready | After fees enabled |
+| Command | Description |
+|---------|-------------|
+| `docker compose up -d` | Start fork node |
+| `docker compose down` | Stop fork node |
+| `docker restart aquari-fork` | **Restart for fresh state** |
+| `docker logs aquari-fork` | View logs |
+| `docker ps` | Check status |
 
-### Edge Cases Tested (in Default/NEW_TOKEN/simulate modes)
+### Fork Testing (--network fork)
 
-| Edge Case | Expected | Actual | Result |
-|-----------|----------|--------|--------|
-| Zero Fees (0/0) | 0% | 0% | ✅ PASS |
-| Production Fees (2.5%) | 2.5% | 2.49-2.50% | ✅ PASS |
-| High Fees (10%) | 10% | 9.99% | ✅ PASS |
-| Extreme Fees (50%) | 50% | 49.99% | ✅ PASS |
-| Owner Exclusion | No fees | No fees | ✅ PASS |
-| Non-owner Security | Revert | Revert | ✅ PASS |
-| Second setUniswapV2Pair | Revert | Revert | ✅ PASS |
-| Regular swap for sell | Revert (K) | Revert (K) | ✅ PASS |
+| Script | Description | Owner Key |
+|--------|-------------|-----------|
+| `scripts/mainnet-execution/1_verify_before.js` | Pre-flight checks | ❌ No (impersonates) |
+| `scripts/mainnet-execution/2_set_fees.js` | Set tax config | ❌ No (impersonates) |
+| `scripts/mainnet-execution/2b_test_trading_before.js` | Test trades (0% fee) | ❌ No |
+| `scripts/mainnet-execution/3_enable_fees.js` | Enable fees | ❌ No (auto-proceeds) |
+| `scripts/mainnet-execution/4_verify_after.js` | Verify state | ❌ No (impersonates) |
+| `scripts/mainnet-execution/5_test_trading_after.js` | Test trades (2.5% fee) | ❌ No |
 
-**Legend:** ✅ Tested & Passed | ❌ Not Yet Tested
+### Test Token (--network base)
 
----
+| Script | Description |
+|--------|-------------|
+| `scripts/test-token/1_deploy.js` | Deploy AQTEST proxy |
+| `scripts/test-token/2_add_liquidity.js` | Create LP (0.01 ETH + 1M tokens) |
+| `scripts/test-token/3_verify_state.js` | Verify contract state |
+| `scripts/test-token/4_configure.js` | Set foundation, fees, enable |
 
-## Test Results Summary
+### Mainnet Execution (--network base)
 
-### Simulation Test Results (All 5 Pass)
+| Script | Description | Reversible |
+|--------|-------------|------------|
+| `scripts/mainnet-execution/1_verify_before.js` | Pre-flight checks | READ ONLY |
+| `scripts/mainnet-execution/2_set_fees.js` | Set tax config | ✅ Yes |
+| `scripts/mainnet-execution/3_enable_fees.js` | Enable fees | ⚠️ **NO** |
+| `scripts/mainnet-execution/4_verify_after.js` | Verify state | READ ONLY |
+| `scripts/mainnet-execution/5_test_trading_after.js` | Test trades | READ ONLY |
 
-| Sim | Purpose | BUY Fee | SELL Fee | Precision Loss | Split |
-|-----|---------|---------|----------|----------------|-------|
-| #1 | Baseline - correct setup | 2.49% | 2.50% | 0.01% / 0.00% | 50/50 |
-| #2 | Wrong pair address | 0.00% | 0.00% | 2.50% (expected) | N/A |
-| #3 | Wrong order (pair before fees) | 2.49% | 2.50% | 0.01% / 0.00% | 50/50 |
-| #4 | High fees (50%) | 49.99% | 50.00% | 0.01% / 0.00% | 50/50 |
-| #5 | Final rehearsal | 2.49% | 2.50% | 0.01% / 0.00% | 50/50 |
+### Additional Test Scripts
 
-### Comprehensive Fork Test Results (32 Tests)
-
-```
-Total Tests:    32
-Passed:         28 ✓
-Failed:         0 ✗
-Info:           4 ℹ
-
-████  ALL TESTS PASSED  ████
-```
-
-#### Tests Covered
-
-| Category | Tests | Status |
-|----------|-------|--------|
-| Pre-Flight Checks | PF01-PF05 | ✅ All Pass |
-| Owner & Access Control | T01-T03 | ✅ All Pass |
-| Security Validations | S01-S03 | ✅ All Pass |
-| Fee Configuration | T04-T05b | ✅ All Pass |
-| Trading Tests | T06-T09 | ✅ All Pass |
-| State Verification | T10-T11 | ✅ All Pass |
-| Exclusion Tests | T13 | ✅ Pass |
-| Edge Cases | E01-E04 | ✅ All Pass |
-| Admin Functions | A01-A02 | ✅ All Pass |
-
-#### Edge Cases Tested
-
-| Edge Case | Expected | Actual | Result |
-|-----------|----------|--------|--------|
-| Zero Fees (0/0) | 0% | 0% | ✅ PASS |
-| High Fees (10%) | 10% | 9.99% | ✅ PASS |
-| Extreme Fees (50%) | 50% | 49.99% | ✅ PASS |
-| Production (2.5%) | 2.5% | 2.49-2.50% | ✅ PASS |
-| Owner Exclusion | No fees | No fees | ✅ PASS |
-| Non-owner Security | Revert | Revert | ✅ PASS |
+| Script | Description |
+|--------|-------------|
+| `scripts/fork-test/run-all.js` | Comprehensive 28-test suite |
+| `scripts/fork-test/test-real-aquari.js` | Test real AQUARI with impersonation |
+| `scripts/simulation/run_all_simulations.js` | Run all 5 simulation scenarios |
 
 ---
 
-## Folder Structure
+## Contract Addresses
 
-```
-scripts/
-├── config.js                    ← Configuration (MODE, addresses, simulations)
-├── README.md                    ← This file
-│
-├── simulation/                  ← Step-by-step simulation scripts (V4 Router)
-│   ├── 0_deploy.js              Deploy test token (AquariSim1-5)
-│   ├── 1_add_liquidity.js       Create pair + add liquidity
-│   ├── 2_set_tax_config.js      Set burn + foundation fees
-│   ├── 2b_test_before_fees.js   Test buy/sell BEFORE fees (verify 0%)
-│   ├── 3_set_pair.js            Enable fees (IRREVERSIBLE!)
-│   ├── 4_test_buy.js            Test BUY via V4 Universal Router
-│   ├── 5_test_sell.js           Test SELL via V4 + Permit2
-│   ├── 6_verify_state.js        Verify final state
-│   ├── status.js                Show all simulations status
-│   └── run_all_simulations.js   Master script (runs all 5 sims)
-│
-├── utils/                       ← Utility modules
-│   └── universalRouter.js       V4 Universal Router + Permit2 helpers
-│
-├── fork-test/                   ← Comprehensive automated testing
-│   ├── run-all.js               Main test runner (32 tests)
-│   ├── config.js                Fork test configuration
-│   ├── reports/                 Generated test reports (JSON + TXT)
-│   └── lib/                     Test utilities
-│       ├── mode.js              Mode detection & context setup
-│       ├── assertions.js        Test assertions
-│       ├── report.js            Report generation
-│       └── state.js             State management
-│
-├── mainnet-execution/           ← Production scripts (real AQUARI)
-│   ├── 1_verify_before.js       Pre-flight checks (READ ONLY)
-│   ├── 2_set_fees.js            Set tax configuration
-│   ├── 2b_test_trading_before.js  Test BUY/SELL (verify 0% fee)
-│   ├── 3_enable_fees.js         Enable fees (⚠️ IRREVERSIBLE!)
-│   ├── 4_verify_after.js        Post-enable verification
-│   └── 5_test_trading_after.js  Test BUY/SELL (verify 2.5% fee)
-│
-└── legacy/                      ← Old scripts (reference only)
-    └── *.js
-```
-
----
-
-## V4 Universal Router (Uniswap UI Swaps)
-
-All swap tests use the **V4 Universal Router** - the same router used by Uniswap's web interface.
-
-### Router Addresses (Base Mainnet)
+### AQUARI Mainnet
 
 | Contract | Address |
 |----------|---------|
+| Token (Proxy) | `0x7f0e9971d3320521fc88f863e173a4cddbb051ba` |
+| LP Pair | `0x30Ec7B2f5be26d03D20AC86554dAadD2b738CA0F` |
+| Foundation Wallet | `0x13B9110A72A8D08A4c08c411143AEDbf0c3FC235` |
+| Owner | `0x187ED96248Bbbbf4D5b059187e030B7511b67801` |
+
+### Base Network
+
+| Contract | Address |
+|----------|---------|
+| WETH | `0x4200000000000000000000000000000000000006` |
+| Uniswap V2 Factory | `0x8909Dc15e40173Ff4699343b6eB8132c65e18eC6` |
+| Uniswap V2 Router | `0x4752ba5DBc23f44D87826276BF6Fd6b1C372aD24` |
 | V4 Universal Router | `0x6ff5693b99212da76ad316178a184ab56d299b43` |
 | Permit2 | `0x000000000022D473030F116dDEE9F6B43aC78BA3` |
-| V2 Router (legacy) | `0x4752ba5DBc23f44D87826276BF6Fd6b1C372aD24` |
-
-### BUY Flow (ETH → Token)
-
-```javascript
-const { buyTokensWithETH, getUniversalRouter } = require("./utils/universalRouter");
-
-const router = getUniversalRouter(signer);
-await buyTokensWithETH(router, tokenAddress, wethAddress, recipient, ethAmount, 0n, deadline);
-```
-
-### SELL Flow (Token → ETH)
-
-**Important:** V4 Universal Router uses Permit2 for token approvals:
-
-```javascript
-const { sellFeeTokensForETH, setupPermit2ForSell, getUniversalRouter } = require("./utils/universalRouter");
-
-// Step 1: Setup Permit2 (one-time)
-await setupPermit2ForSell(tokenContract, tokenAddress, signer);
-
-// Step 2: Execute sell
-const router = getUniversalRouter(signer);
-await sellFeeTokensForETH(router, tokenAddress, wethAddress, recipient, tokenAmount, 0n, deadline);
-```
-
-### Fee Precision Results
-
-| Operation | Expected | Actual | Precision Loss |
-|-----------|----------|--------|----------------|
-| BUY via V4 | 2.50% | 2.49% | 0.01% |
-| SELL via V4 | 2.50% | 2.50% | 0.00% |
 
 ---
 
-## Configuration (config.js)
+## Fee Configuration
 
-### Switch Mode
+### Tax Settings
 
-```javascript
-const MODE = "simulation";  // For testing
-// or
-const MODE = "mainnet";     // For real AQUARI
+| Parameter | Value | Description |
+|-----------|-------|-------------|
+| burnTax | 125 bps | 1.25% burned on each trade |
+| foundationFee | 125 bps | 1.25% to foundation wallet |
+| **Total** | **250 bps** | **2.5% total fee** |
+
+### What Happens on Each Trade
+
 ```
-
-### Select Simulation
-
-```javascript
-const ACTIVE_SIMULATION = 1;  // Options: 1, 2, 3, 4, 5
+User trades 1000 tokens:
+├── 12.5 tokens BURNED (removed from supply)
+├── 12.5 tokens to FOUNDATION wallet
+└── 975 tokens to TRADER (97.5%)
 ```
-
-### Tax Configuration
-
-```javascript
-// Target: 1.25% burn + 1.25% foundation = 2.5% total
-const MAINNET = {
-    taxConfig: {
-        burnTax: 125,        // 1.25% (125 basis points)
-        foundationFee: 125,  // 1.25% (125 basis points)
-    },
-};
-```
-
----
-
-## Gas Usage
-
-| Operation | Gas Used |
-|-----------|----------|
-| setTaxConfig | ~59,264 |
-| setUniswapV2Pair | ~52,398 |
-| BUY swap (V4) | ~218,328 |
-| SELL swap (V4) | ~171,961 |
-| **Total for fee enablement** | ~111,662 |
-
----
-
-## After Fee Enablement
 
 ### What Admin CAN Change (anytime)
 
 ```javascript
-// Change tax rates
-await token.setTaxConfig(200, 200);  // 2% + 2%
-
-// Remove all fees
-await token.setTaxConfig(0, 0);
-
-// Change foundation wallet
-await token.setFoundationWallet("0xNEW");
-
-// Disable trading
-await token.setTradingEnabled(false);
-
-// Emergency pause
-await token.pause();
+await token.setTaxConfig(200, 200);        // Change to 4% total
+await token.setTaxConfig(0, 0);            // Remove all fees
+await token.setFoundationWallet("0x...");  // Change wallet
+await token.setTradingEnabled(false);      // Disable trading
+await token.pause();                       // Emergency pause
 ```
 
 ### What Admin CANNOT Change
 
 ```javascript
 // ❌ Cannot call again - pair is permanently set
-await token.setUniswapV2Pair(address);  // Will REVERT with "PairAlreadySet"
-```
-
----
-
-## Reports Location
-
-Test reports are saved to:
-
-```
-scripts/fork-test/reports/
-├── report-mainnet-YYYY-MM-DDTHH-MM-SS.txt   (Human readable)
-└── report-mainnet-YYYY-MM-DDTHH-MM-SS.json  (Machine readable)
-
-simulation_report.txt                         (5 simulations summary)
+await token.setUniswapV2Pair(address);  // REVERTS with "PairAlreadySet"
 ```
 
 ---
@@ -530,51 +435,107 @@ simulation_report.txt                         (5 simulations summary)
 ## Troubleshooting
 
 ### "You are NOT the owner"
-- Check your private key in .env matches the contract owner
-- Verify on BaseScan who the owner is
+
+- On fork: Should auto-impersonate, check Docker is running
+- On mainnet: Verify `ADMIN_KEY` in `.env` matches owner address
 
 ### "PairAlreadySet"
+
 - Fees are already enabled
-- You cannot change the pair address
+- This is expected if running script twice
+- Cannot change pair address after setting
 
-### "K" error on sell (V2 Router)
-- This is EXPECTED for fee-on-transfer tokens with V2 Router
-- Use `swapExactTokensForETHSupportingFeeOnTransferTokens` for V2
-- Or use V4 Universal Router (recommended)
+### Fork node not responding
 
-### Fees not applying
-- Check `pairIsSet` is true
-- Verify stored pair matches factory pair
-- Check trader is not in `_excludedAddresses` or `isExcludedFromTax`
+```bash
+docker restart aquari-fork
+sleep 5  # Wait for node to start
+```
 
-### Tests show 0% fees after enable
-- Make sure buyer/seller is NOT the owner (owner is excluded)
-- Use Account #1 or #2 for testing (not Account #0)
+### "K" error on sell
 
-### V4 Sell failing
-- Ensure Permit2 is approved: `await setupPermit2ForSell(token, tokenAddress, signer)`
-- Check token balance is sufficient
+- This is EXPECTED for fee tokens with regular V2 swaps
+- Scripts use V4 Universal Router which handles this correctly
+
+### 0% fees after enabling
+
+- Make sure trader is NOT the owner (owner is excluded from fees)
+- Fork testing uses Account #1, not Account #0
+
+### Transaction failing on mainnet
+
+- Check ETH balance for gas
+- Verify you're on Base network (chain ID 8453)
+- Check BaseScan for error details
 
 ---
 
-## Safety Checklist
+## Folder Structure
 
-Before running mainnet scripts:
+```
+scripts/
+├── README.md                    ← This file
+├── config.js                    ← Shared configuration
+│
+├── mainnet-execution/           ← REAL AQUARI scripts
+│   ├── 1_verify_before.js       Pre-flight checks
+│   ├── 2_set_fees.js            Set tax configuration
+│   ├── 2b_test_trading_before.js  Test BUY/SELL (0% fee)
+│   ├── 3_enable_fees.js         Enable fees (⚠️ IRREVERSIBLE!)
+│   ├── 4_verify_after.js        Verify state
+│   └── 5_test_trading_after.js  Test BUY/SELL (2.5% fee)
+│
+├── test-token/                  ← Test token (AQTEST) scripts
+│   ├── 1_deploy.js              Deploy to Base mainnet
+│   ├── 2_add_liquidity.js       Create LP pair
+│   ├── 3_verify_state.js        Verify state
+│   ├── 4_configure.js           Enable fees
+│   ├── config.js                Test token config
+│   └── state.json               Saved addresses
+│
+├── fork-test/                   ← Comprehensive test suite
+│   ├── run-all.js               28-test runner
+│   ├── test-real-aquari.js      Real AQUARI test
+│   └── config.js                Fork test config
+│
+├── simulation/                  ← Simulation scenarios
+│   └── *.js                     5 different test scenarios
+│
+└── utils/                       ← Shared utilities
+    └── universalRouter.js       V4 router helpers
+```
 
-- [ ] Run ALL 5 simulations successfully (`run_all_simulations.js`)
-- [ ] Run comprehensive fork test (`fork-test/run-all.js`)
-- [ ] Verify all 32 tests pass
-- [ ] Check fee precision is within tolerance (< 0.02%)
-- [ ] **Run mainnet-execution scripts on FORK first:**
-  - [ ] `1_verify_before.js --network fork` ✓
-  - [ ] `2_set_fees.js --network fork` ✓
-  - [ ] `2b_test_trading_before.js --network fork` ✓ (verify 0% fee)
-  - [ ] `3_enable_fees.js --network fork` ✓
-  - [ ] `4_verify_after.js --network fork` ✓
-  - [ ] `5_test_trading_after.js --network fork` ✓ (verify 2.5% fee)
-- [ ] Verify you are the owner
-- [ ] Verify pair address matches factory
-- [ ] Verify tax config is correct (125 + 125 = 250 bps = 2.5%)
-- [ ] Understand that setUniswapV2Pair is IRREVERSIBLE
-- [ ] Have someone double-check addresses
-- [ ] Test with non-owner account to verify fees apply
+---
+
+## Quick Reference Card
+
+```bash
+# ════════════════════════════════════════════════════════════════════════════
+# FORK TESTING (No private key needed)
+# ════════════════════════════════════════════════════════════════════════════
+docker restart aquari-fork && sleep 3
+npx hardhat run scripts/mainnet-execution/1_verify_before.js --network fork
+npx hardhat run scripts/mainnet-execution/2_set_fees.js --network fork
+npx hardhat run scripts/mainnet-execution/2b_test_trading_before.js --network fork
+npx hardhat run scripts/mainnet-execution/3_enable_fees.js --network fork
+npx hardhat run scripts/mainnet-execution/4_verify_after.js --network fork
+npx hardhat run scripts/mainnet-execution/5_test_trading_after.js --network fork
+
+# ════════════════════════════════════════════════════════════════════════════
+# TEST TOKEN DEPLOYMENT (Base mainnet)
+# ════════════════════════════════════════════════════════════════════════════
+npx hardhat run scripts/test-token/1_deploy.js --network base
+npx hardhat run scripts/test-token/2_add_liquidity.js --network base
+npx hardhat run scripts/test-token/3_verify_state.js --network base
+# Trade on Uniswap UI - verify 0% fee
+npx hardhat run scripts/test-token/4_configure.js --network base
+# Trade on Uniswap UI - verify 2.5% fee
+
+# ════════════════════════════════════════════════════════════════════════════
+# MAINNET EXECUTION (Requires owner key in .env)
+# ════════════════════════════════════════════════════════════════════════════
+npx hardhat run scripts/mainnet-execution/1_verify_before.js --network base
+npx hardhat run scripts/mainnet-execution/2_set_fees.js --network base
+npx hardhat run scripts/mainnet-execution/3_enable_fees.js --network base  # ⚠️ IRREVERSIBLE!
+npx hardhat run scripts/mainnet-execution/4_verify_after.js --network base
+```
