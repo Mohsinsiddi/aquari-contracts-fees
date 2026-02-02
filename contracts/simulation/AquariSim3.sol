@@ -27,7 +27,7 @@ import {FixedPointMathLib} from "./FixedPointMathLib.sol";
  *  - Token allocation by an owner that can be later unleashed into circulation.
  *  - Owner retains control (ownership cannot be renounced).
  */
-contract AquariProtocol is
+contract AquariSim3 is
     Initializable,
     OwnableUpgradeable,
     ERC20Upgradeable,
@@ -295,9 +295,9 @@ contract AquariProtocol is
         if (initialOwner == address(0)) revert InvalidAddress();
 
         __ReentrancyGuard_init();
-        __ERC20_init("Aquari Test", "AQUARIT");
+        __ERC20_init("Aquari Sim3", "AQSIM3");
         __Ownable_init(initialOwner);
-        __ERC20Permit_init_unchained("Aquari Test");
+        __ERC20Permit_init_unchained("Aquari Sim3");
         __ERC20Pausable_init_unchained();
         __ERC20Burnable_init_unchained();
 
@@ -836,3 +836,4 @@ contract AquariProtocol is
      */
     uint256[50] private __gap;
 }
+

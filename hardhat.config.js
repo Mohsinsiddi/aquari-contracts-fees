@@ -6,7 +6,7 @@ module.exports = {
   networks: {
     hardhat: {
       forking: {
-        url: "https://base-mainnet.g.alchemy.com/v2/eQ_Axw8A_qkH4LzpV-gnOgilkiflVSam",
+        url: "https://base-mainnet.public.blastapi.io",
         enabled: true,
       },
       chainId: 8453,
@@ -18,7 +18,7 @@ module.exports = {
       }
     },
     baseMainnet: {
-      url: "https://base-mainnet.g.alchemy.com/v2/eQ_Axw8A_qkH4LzpV-gnOgilkiflVSam",
+      url: "https://base-mainnet.public.blastapi.io",
       accounts: [process.env.ONCHAINKEY, process.env.ONCHAINKEY2],
       chainId: 8453,
       gas: 'auto',
