@@ -1,17 +1,22 @@
 /**
  * =============================================================================
- * MASTER SCRIPT: Run All Simulations (1-5)
+ * MASTER SCRIPT: Run All Simulations (1-5) via V4 Universal Router
  * =============================================================================
  *
  * Runs all 5 simulations end-to-end with full workflow:
  *   0. Deploy
  *   1. Add Liquidity
  *   2. Set Tax Config
- *   2b. Test Before Fees (verify 0%)
+ *   2b. Test Before Fees (verify 0%) - V4 BUY, V2 SELL
  *   3. Set Pair (enable fees - IRREVERSIBLE)
- *   4. Test Buy (verify fees)
- *   5. Test Sell (verify fees)
+ *   4. Test Buy (verify fees) - V4 Universal Router
+ *   5. Test Sell (verify fees) - V4 Universal Router + Permit2
  *   6. Verify State
+ *
+ * All swaps use V4 Universal Router (0x6ff5693b99212da76ad316178a184ab56d299b43)
+ * Sells require Permit2 (0x000000000022D473030F116dDEE9F6B43aC78BA3)
+ *
+ * Usage: npx hardhat run scripts/simulation/run_all_simulations.js --network fork
  *
  * =============================================================================
  */
@@ -90,6 +95,36 @@ function extractResult(output, stepName) {
     return "DONE";
 }
 
+function extractFeeAnalysis(output) {
+    const analysis = {};
+
+    // Extract expected fee
+    const expectedMatch = output.match(/Expected Fee:\s+([\d.]+)%/);
+    if (expectedMatch) analysis.expectedFee = expectedMatch[1];
+
+    // Extract actual fee
+    const actualMatch = output.match(/Actual Fee:\s+([\d.]+)%/);
+    if (actualMatch) analysis.actualFee = actualMatch[1];
+
+    // Extract precision loss
+    const precisionMatch = output.match(/Precision Loss:\s+([\d.]+)%/);
+    if (precisionMatch) analysis.precisionLoss = precisionMatch[1];
+
+    // Extract burn split
+    const burnMatch = output.match(/Burn Split:\s+([\d.]+)%/);
+    if (burnMatch) analysis.burnSplit = burnMatch[1];
+
+    // Extract foundation split
+    const foundationMatch = output.match(/Foundation Split:\s+([\d.]+)%/);
+    if (foundationMatch) analysis.foundationSplit = foundationMatch[1];
+
+    // Extract total fees
+    const totalFeesMatch = output.match(/Total Fees:\s+([\d.]+)/);
+    if (totalFeesMatch) analysis.totalFees = totalFeesMatch[1];
+
+    return Object.keys(analysis).length > 0 ? analysis : null;
+}
+
 async function main() {
     console.log("");
     console.log("=".repeat(80));
@@ -138,6 +173,22 @@ async function main() {
             results[simId].steps[step.script] = status;
             report.push(`  ${step.name}: ${status}`);
 
+            // Extract and report fee analysis for buy/sell steps
+            if ((step.script === "4_test_buy.js" || step.script === "5_test_sell.js") && result.success) {
+                const feeAnalysis = extractFeeAnalysis(result.output);
+                if (feeAnalysis) {
+                    report.push(`    ├─ Expected: ${feeAnalysis.expectedFee || "N/A"}%`);
+                    report.push(`    ├─ Actual:   ${feeAnalysis.actualFee || "N/A"}%`);
+                    report.push(`    ├─ Precision Loss: ${feeAnalysis.precisionLoss || "N/A"}%`);
+                    if (feeAnalysis.burnSplit) {
+                        report.push(`    ├─ Burn Split: ${feeAnalysis.burnSplit}%`);
+                    }
+                    if (feeAnalysis.foundationSplit) {
+                        report.push(`    └─ Foundation Split: ${feeAnalysis.foundationSplit}%`);
+                    }
+                }
+            }
+
             if (!result.success) {
                 console.log(`  [${simId}] ${step.name}: FAILED`);
                 console.log(`       ${result.output.split("\n").slice(-3).join("\n       ")}`);
@@ -146,6 +197,13 @@ async function main() {
                 break;
             } else {
                 console.log(`  [${simId}] ${step.name}: ${status}`);
+                // Show fee analysis in console for buy/sell
+                if (step.script === "4_test_buy.js" || step.script === "5_test_sell.js") {
+                    const feeAnalysis = extractFeeAnalysis(result.output);
+                    if (feeAnalysis && feeAnalysis.actualFee) {
+                        console.log(`       Fee: ${feeAnalysis.actualFee}% (expected ${feeAnalysis.expectedFee}%), precision loss: ${feeAnalysis.precisionLoss}%`);
+                    }
+                }
             }
         }
 

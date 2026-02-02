@@ -1,0 +1,126 @@
+AQUARI SIMULATION REPORT
+============================================================
+Date: 2026-02-02T15:40:38.898Z
+
+
+SIMULATION 1: AquariSim1
+Purpose: Baseline - correct setup
+------------------------------------------------------------
+  Deploy: PASS
+  Add Liquidity: PASS
+  Set Tax Config: PASS
+  Test Before Fees: NO FEES
+  Set Pair (Enable Fees): PASS
+  Test Buy: PASS
+    ├─ Expected: 2.5%
+    ├─ Actual:   2.4900%
+    ├─ Precision Loss: 0.010000%
+    ├─ Burn Split: 50.00%
+    └─ Foundation Split: 50.00%
+  Test Sell: PASS
+    ├─ Expected: 2.5%
+    ├─ Actual:   2.5000%
+    ├─ Precision Loss: 0.000000%
+    ├─ Burn Split: 50.00%
+    └─ Foundation Split: 50.00%
+  Verify State: PASS
+  OVERALL: PASS
+
+SIMULATION 2: AquariSim2
+Purpose: Wrong pair address test
+------------------------------------------------------------
+  Deploy: PASS
+  Add Liquidity: PASS
+  Set Tax Config: PASS
+  Test Before Fees: NO FEES
+  Set Pair (Enable Fees): PASS
+  Test Buy: PASS
+    ├─ Expected: 2.5%
+    ├─ Actual:   0.0000%
+    ├─ Precision Loss: 2.500000%
+  Test Sell: PASS
+    ├─ Expected: 2.5%
+    ├─ Actual:   0.0000%
+    ├─ Precision Loss: 2.500000%
+  Verify State: PASS
+  OVERALL: PASS
+
+SIMULATION 3: AquariSim3
+Purpose: Wrong order (pair before fees)
+------------------------------------------------------------
+  Deploy: PASS
+  Add Liquidity: PASS
+  Set Tax Config: PASS
+  Test Before Fees: NO FEES
+  Set Pair (Enable Fees): PASS
+  Test Buy: PASS
+    ├─ Expected: 2.5%
+    ├─ Actual:   2.4900%
+    ├─ Precision Loss: 0.010000%
+    ├─ Burn Split: 50.00%
+    └─ Foundation Split: 50.00%
+  Test Sell: PASS
+    ├─ Expected: 2.5%
+    ├─ Actual:   2.5000%
+    ├─ Precision Loss: 0.000000%
+    ├─ Burn Split: 50.00%
+    └─ Foundation Split: 50.00%
+  Verify State: PASS
+  OVERALL: PASS
+
+SIMULATION 4: AquariSim4
+Purpose: High fees (50%)
+------------------------------------------------------------
+  Deploy: PASS
+  Add Liquidity: PASS
+  Set Tax Config: PASS
+  Test Before Fees: NO FEES
+  Set Pair (Enable Fees): PASS
+  Test Buy: PASS
+    ├─ Expected: 50%
+    ├─ Actual:   49.9900%
+    ├─ Precision Loss: 0.010000%
+    ├─ Burn Split: 50.00%
+    └─ Foundation Split: 50.00%
+  Test Sell: PASS
+    ├─ Expected: 50%
+    ├─ Actual:   50.0000%
+    ├─ Precision Loss: 0.000000%
+    ├─ Burn Split: 50.00%
+    └─ Foundation Split: 50.00%
+  Verify State: PASS
+  OVERALL: PASS
+
+SIMULATION 5: AquariSim5
+Purpose: Final rehearsal
+------------------------------------------------------------
+  Deploy: PASS
+  Add Liquidity: PASS
+  Set Tax Config: PASS
+  Test Before Fees: NO FEES
+  Set Pair (Enable Fees): PASS
+  Test Buy: PASS
+    ├─ Expected: 2.5%
+    ├─ Actual:   2.4900%
+    ├─ Precision Loss: 0.010000%
+    ├─ Burn Split: 50.00%
+    └─ Foundation Split: 50.00%
+  Test Sell: PASS
+    ├─ Expected: 2.5%
+    ├─ Actual:   2.5000%
+    ├─ Precision Loss: 0.000000%
+    ├─ Burn Split: 50.00%
+    └─ Foundation Split: 50.00%
+  Verify State: PASS
+  OVERALL: PASS
+
+============================================================
+FINAL SUMMARY
+============================================================
+  [✓] Simulation 1: AquariSim1 - PASS
+  [✓] Simulation 2: AquariSim2 - PASS
+  [✓] Simulation 3: AquariSim3 - PASS
+  [✓] Simulation 4: AquariSim4 - PASS
+  [✓] Simulation 5: AquariSim5 - PASS
+
+Total: 5 passed, 0 failed

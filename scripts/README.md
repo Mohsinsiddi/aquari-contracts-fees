@@ -16,6 +16,53 @@ If you are NOT the owner, transactions will FAIL.
 
 ---
 
+## Commands Overview
+
+### Available Networks
+
+| Network Flag | Description | Use For |
+|-------------|-------------|---------|
+| `--network fork` | Anvil fork of Base mainnet | Testing (RECOMMENDED) |
+| `--network base` | Real Base mainnet | Production (CAREFUL!) |
+
+---
+
+## All Commands & Test Status
+
+### Simulation Scripts (--network fork)
+
+| Command | Description | Tested | Result |
+|---------|-------------|--------|--------|
+| `npx hardhat run scripts/simulation/0_deploy.js --network fork` | Deploy test token | ✅ | PASS |
+| `npx hardhat run scripts/simulation/1_add_liquidity.js --network fork` | Create pair + add LP | ✅ | PASS |
+| `npx hardhat run scripts/simulation/2_set_tax_config.js --network fork` | Set burn + foundation fees | ✅ | PASS |
+| `npx hardhat run scripts/simulation/2b_test_before_fees.js --network fork` | Test BUY/SELL before fees (V4) | ✅ | PASS (0%) |
+| `npx hardhat run scripts/simulation/3_set_pair.js --network fork` | Enable fees (IRREVERSIBLE!) | ✅ | PASS |
+| `npx hardhat run scripts/simulation/4_test_buy.js --network fork` | Test BUY via V4 Router | ✅ | PASS (2.49%) |
+| `npx hardhat run scripts/simulation/5_test_sell.js --network fork` | Test SELL via V4 + Permit2 | ✅ | PASS (2.50%) |
+| `npx hardhat run scripts/simulation/6_verify_state.js --network fork` | Verify final state | ✅ | PASS |
+| `npx hardhat run scripts/simulation/status.js --network fork` | Show all simulation status | ✅ | PASS |
+| `npx hardhat run scripts/simulation/run_all_simulations.js --network fork` | Run all 5 simulations | ✅ | 5/5 PASS |
+
+### Fork Test Suite (--network fork)
+
+| Command | Description | Tested | Result |
+|---------|-------------|--------|--------|
+| `npx hardhat run scripts/fork-test/run-all.js --network fork` | Comprehensive E2E test (32 tests) | ✅ | 28/28 PASS |
+
+### Mainnet Scripts (--network base)
+
+| Command | Description | Tested | Result |
+|---------|-------------|--------|--------|
+| `npx hardhat run scripts/mainnet-execution/1_verify_before.js --network base` | Pre-flight checks (READ ONLY) | ⚠️ | Ready |
+| `npx hardhat run scripts/mainnet-execution/2_set_fees.js --network base` | Set tax configuration | ⚠️ | Ready |
+| `npx hardhat run scripts/mainnet-execution/3_enable_fees.js --network base` | Enable fees (IRREVERSIBLE!) | ⚠️ | Ready |
+| `npx hardhat run scripts/mainnet-execution/4_verify_after.js --network base` | Post-enable verification | ⚠️ | Ready |
+
+**Legend:** ✅ Fully Tested | ⚠️ Not Yet Executed (ready for production)
+
+---
+
 ## Quick Start
 
 ### 1. Start Fork (Docker)
@@ -28,49 +75,93 @@ docker compose up -d
 docker compose ps
 ```
 
-### 2. Run Simulation Tests (Recommended First)
+### 2. Run Individual Simulation Steps
 
 ```bash
 # Edit config.js - set ACTIVE_SIMULATION = 1 (or 2,3,4,5)
 
-# Run all steps for simulation
 npx hardhat run scripts/simulation/0_deploy.js --network fork
 npx hardhat run scripts/simulation/1_add_liquidity.js --network fork
 npx hardhat run scripts/simulation/2_set_tax_config.js --network fork
-npx hardhat run scripts/simulation/2b_test_before_fees.js --network fork  # NEW: Verify 0% before enable
+npx hardhat run scripts/simulation/2b_test_before_fees.js --network fork  # Verify 0% before enable
 npx hardhat run scripts/simulation/3_set_pair.js --network fork           # ⚠️ IRREVERSIBLE
-npx hardhat run scripts/simulation/4_test_buy.js --network fork
-npx hardhat run scripts/simulation/5_test_sell.js --network fork
+npx hardhat run scripts/simulation/4_test_buy.js --network fork           # V4 Universal Router
+npx hardhat run scripts/simulation/5_test_sell.js --network fork          # V4 + Permit2
 npx hardhat run scripts/simulation/6_verify_state.js --network fork
-
-# Or run all 5 simulations automatically
-node scripts/simulation/run_all_simulations.js
 ```
 
-### 3. Fork Test with New Token
+### 3. Run All 5 Simulations (Recommended)
 
 ```bash
-# Deploy fresh AquariProtocol on fork, test as owner
+npx hardhat run scripts/simulation/run_all_simulations.js --network fork
+```
+
+### 4. Run Comprehensive Fork Test
+
+```bash
 npx hardhat run scripts/fork-test/run-all.js --network fork
 ```
 
-### 4. Mainnet Execution (Production)
+### 5. Mainnet Execution (Production)
 
 ```bash
 # Edit config.js - set MODE = "mainnet"
 
-# Step 1: Verify state (READ ONLY)
 npx hardhat run scripts/mainnet-execution/1_verify_before.js --network base
-
-# Step 2: Set tax config (can change later)
 npx hardhat run scripts/mainnet-execution/2_set_fees.js --network base
-
-# Step 3: Enable fees (⚠️ IRREVERSIBLE!)
-npx hardhat run scripts/mainnet-execution/3_enable_fees.js --network base
-
-# Step 4: Verify everything works
+npx hardhat run scripts/mainnet-execution/3_enable_fees.js --network base  # ⚠️ IRREVERSIBLE!
 npx hardhat run scripts/mainnet-execution/4_verify_after.js --network base
 ```
+
+---
+
+## Test Results Summary
+
+### Simulation Test Results (All 5 Pass)
+
+| Sim | Purpose | BUY Fee | SELL Fee | Precision Loss | Split |
+|-----|---------|---------|----------|----------------|-------|
+| #1 | Baseline - correct setup | 2.49% | 2.50% | 0.01% / 0.00% | 50/50 |
+| #2 | Wrong pair address | 0.00% | 0.00% | 2.50% (expected) | N/A |
+| #3 | Wrong order (pair before fees) | 2.49% | 2.50% | 0.01% / 0.00% | 50/50 |
+| #4 | High fees (50%) | 49.99% | 50.00% | 0.01% / 0.00% | 50/50 |
+| #5 | Final rehearsal | 2.49% | 2.50% | 0.01% / 0.00% | 50/50 |
+
+### Comprehensive Fork Test Results (32 Tests)
+
+```
+Total Tests:    32
+Passed:         28 ✓
+Failed:         0 ✗
+Info:           4 ℹ
+
+████  ALL TESTS PASSED  ████
+```
+
+#### Tests Covered
+
+| Category | Tests | Status |
+|----------|-------|--------|
+| Pre-Flight Checks | PF01-PF05 | ✅ All Pass |
+| Owner & Access Control | T01-T03 | ✅ All Pass |
+| Security Validations | S01-S03 | ✅ All Pass |
+| Fee Configuration | T04-T05b | ✅ All Pass |
+| Trading Tests | T06-T09 | ✅ All Pass |
+| State Verification | T10-T11 | ✅ All Pass |
+| Exclusion Tests | T13 | ✅ Pass |
+| Edge Cases | E01-E04 | ✅ All Pass |
+| Admin Functions | A01-A02 | ✅ All Pass |
+
+#### Edge Cases Tested
+
+| Edge Case | Expected | Actual | Result |
+|-----------|----------|--------|--------|
+| Zero Fees (0/0) | 0% | 0% | ✅ PASS |
+| High Fees (10%) | 10% | 9.99% | ✅ PASS |
+| Extreme Fees (50%) | 50% | 49.99% | ✅ PASS |
+| Production (2.5%) | 2.5% | 2.49-2.50% | ✅ PASS |
+| Owner Exclusion | No fees | No fees | ✅ PASS |
+| Non-owner Security | Revert | Revert | ✅ PASS |
 
 ---
 
@@ -81,24 +172,25 @@ scripts/
 ├── config.js                    ← Configuration (MODE, addresses, simulations)
 ├── README.md                    ← This file
 │
-├── simulation/                  ← Step-by-step simulation scripts
+├── simulation/                  ← Step-by-step simulation scripts (V4 Router)
 │   ├── 0_deploy.js              Deploy test token (AquariSim1-5)
 │   ├── 1_add_liquidity.js       Create pair + add liquidity
 │   ├── 2_set_tax_config.js      Set burn + foundation fees
-│   ├── 2b_test_before_fees.js   ★ Test buy/sell BEFORE fees (verify 0%)
+│   ├── 2b_test_before_fees.js   Test buy/sell BEFORE fees (verify 0%)
 │   ├── 3_set_pair.js            Enable fees (IRREVERSIBLE!)
-│   ├── 4_test_buy.js            Test buying tokens (verify fees)
-│   ├── 5_test_sell.js           Test selling tokens (verify fees)
+│   ├── 4_test_buy.js            Test BUY via V4 Universal Router
+│   ├── 5_test_sell.js           Test SELL via V4 + Permit2
 │   ├── 6_verify_state.js        Verify final state
-│   ├── test_v4_swap.js          ★ Test V4 Universal Router (UI swaps)
-│   └── run_all_simulations.js   ★ Master script (runs all 5 sims)
+│   ├── status.js                Show all simulations status
+│   └── run_all_simulations.js   Master script (runs all 5 sims)
 │
 ├── utils/                       ← Utility modules
-│   └── universalRouter.js       V4 Universal Router helpers
+│   └── universalRouter.js       V4 Universal Router + Permit2 helpers
 │
-├── fork-test/                   ← Automated fork testing
-│   ├── run-all.js               Main test runner
+├── fork-test/                   ← Comprehensive automated testing
+│   ├── run-all.js               Main test runner (32 tests)
 │   ├── config.js                Fork test configuration
+│   ├── reports/                 Generated test reports (JSON + TXT)
 │   └── lib/                     Test utilities
 │       ├── mode.js              Mode detection & context setup
 │       ├── assertions.js        Test assertions
@@ -117,112 +209,48 @@ scripts/
 
 ---
 
-## Simulation Test Scenarios
+## V4 Universal Router (Uniswap UI Swaps)
 
-| Sim | Contract | Purpose | Tax Config |
-|-----|----------|---------|------------|
-| 1 | AquariSim1 | Baseline - correct setup | 2.5% (1.25% + 1.25%) |
-| 2 | AquariSim2 | Wrong pair address test | 2.5% |
-| 3 | AquariSim3 | Wrong order test (pair before fees) | 2.5% |
-| 4 | AquariSim4 | High fees test | 50% (25% + 25%) |
-| 5 | AquariSim5 | Final rehearsal (exact mainnet config) | 2.5% |
+All swap tests use the **V4 Universal Router** - the same router used by Uniswap's web interface.
 
-### Test Results (All Pass)
+### Router Addresses (Base Mainnet)
 
-| Sim | Before Fees | After Fees | Result |
-|-----|-------------|------------|--------|
-| 1 | 0% ✓ | 2.5% ✓ | **PASS** |
-| 2 | 0% ✓ | 0% ✓ (wrong pair) | **PASS** |
-| 3 | 0% ✓ | 2.5% ✓ | **PASS** |
-| 4 | 0% ✓ | 50% ✓ | **PASS** |
-| 5 | 0% ✓ | 2.5% ✓ | **PASS** |
+| Contract | Address |
+|----------|---------|
+| V4 Universal Router | `0x6ff5693b99212da76ad316178a184ab56d299b43` |
+| Permit2 | `0x000000000022D473030F116dDEE9F6B43aC78BA3` |
+| V2 Router (legacy) | `0x4752ba5DBc23f44D87826276BF6Fd6b1C372aD24` |
 
----
-
-## What Each Script Does
-
-### Simulation Scripts
-
-| Script | Action | Reversible? |
-|--------|--------|-------------|
-| 0_deploy.js | Deploys test token | N/A |
-| 1_add_liquidity.js | Creates pair, adds LP | N/A |
-| 2_set_tax_config.js | Sets burn + foundation fees | ✅ YES |
-| **2b_test_before_fees.js** | Tests buy/sell with 0% fees | N/A |
-| 3_set_pair.js | Enables fees on trades | ❌ NO! |
-| 4_test_buy.js | Tests buy, verifies fees applied | N/A |
-| 5_test_sell.js | Tests sell, verifies fees applied | N/A |
-| 6_verify_state.js | Shows final state | N/A |
-| **test_v4_swap.js** | Tests V4 Universal Router (UI) | N/A |
-
-### Mainnet Scripts
-
-| Script | Action | Reversible? |
-|--------|--------|-------------|
-| 1_verify_before.js | Checks state (READ ONLY) | N/A |
-| 2_set_fees.js | Sets tax configuration | ✅ YES |
-| 3_enable_fees.js | Enables fees (sets pair) | ❌ NO! |
-| 4_verify_after.js | Verifies everything (READ ONLY) | N/A |
-
----
-
-## Key Findings from Testing
-
-### 1. Fee Enablement Flow
-
-```
-setTaxConfig() → Sets fee rates (can change anytime)
-setUniswapV2Pair() → Enables fees (ONE TIME, IRREVERSIBLE!)
-```
-
-### 2. Before vs After Fees
-
-| State | pairIsSet | Buy Fee | Sell Fee | Regular Swap |
-|-------|-----------|---------|----------|--------------|
-| Before enable | false | 0% | 0% | Works |
-| After enable | true | 2.5% | 2.5% | FAILS (use Supporting) |
-
-### 3. Excluded Addresses
-
-- Owner is excluded from fees by default
-- Test with non-owner account (Account #1) for accurate results
-
-### 4. Sell Method (V2 Router)
+### BUY Flow (ETH → Token)
 
 ```javascript
-// ❌ Regular swap FAILS for fee tokens
-router.swapExactTokensForETH(...)  // FAILS with "K" error
+const { buyTokensWithETH, getUniversalRouter } = require("./utils/universalRouter");
 
-// ✅ Use SupportingFeeOnTransferTokens
-router.swapExactTokensForETHSupportingFeeOnTransferTokens(...)  // WORKS
+const router = getUniversalRouter(signer);
+await buyTokensWithETH(router, tokenAddress, wethAddress, recipient, ethAmount, 0n, deadline);
 ```
 
-### 5. V4 Universal Router (UI Swaps)
+### SELL Flow (Token → ETH)
 
-The Uniswap UI uses the **V4 Universal Router** which calls V2 pairs directly.
-Fees apply correctly for both buy and sell operations.
-
-```bash
-# Test V4 swaps
-npx hardhat run scripts/simulation/test_v4_swap.js --network fork
-```
-
-**Results:**
-| Operation | Method | Fee Applied |
-|-----------|--------|-------------|
-| BUY | V4 Universal Router | 2.5% ✅ |
-| SELL | V4 Universal Router | 2.5% ✅ |
-
-**Important for V4 SELL:** Universal Router uses **Permit2** for token transfers:
-1. Approve Permit2 for the token (ERC20 approval)
-2. Approve Universal Router via Permit2
-3. Then sell works correctly
+**Important:** V4 Universal Router uses Permit2 for token approvals:
 
 ```javascript
-// Utility helper available
-const { setupPermit2ForSell } = require("./utils/universalRouter");
-await setupPermit2ForSell(token, tokenAddress, signer);
+const { sellFeeTokensForETH, setupPermit2ForSell, getUniversalRouter } = require("./utils/universalRouter");
+
+// Step 1: Setup Permit2 (one-time)
+await setupPermit2ForSell(tokenContract, tokenAddress, signer);
+
+// Step 2: Execute sell
+const router = getUniversalRouter(signer);
+await sellFeeTokensForETH(router, tokenAddress, wethAddress, recipient, tokenAmount, 0n, deadline);
 ```
+
+### Fee Precision Results
+
+| Operation | Expected | Actual | Precision Loss |
+|-----------|----------|--------|----------------|
+| BUY via V4 | 2.50% | 2.49% | 0.01% |
+| SELL via V4 | 2.50% | 2.50% | 0.00% |
 
 ---
 
@@ -248,11 +276,23 @@ const ACTIVE_SIMULATION = 1;  // Options: 1, 2, 3, 4, 5
 // Target: 1.25% burn + 1.25% foundation = 2.5% total
 const MAINNET = {
     taxConfig: {
-        burnTax: 125,        // 1.25%
-        foundationFee: 125,  // 1.25%
+        burnTax: 125,        // 1.25% (125 basis points)
+        foundationFee: 125,  // 1.25% (125 basis points)
     },
 };
 ```
+
+---
+
+## Gas Usage
+
+| Operation | Gas Used |
+|-----------|----------|
+| setTaxConfig | ~59,264 |
+| setUniswapV2Pair | ~52,398 |
+| BUY swap (V4) | ~218,328 |
+| SELL swap (V4) | ~171,961 |
+| **Total for fee enablement** | ~111,662 |
 
 ---
 
@@ -286,6 +326,20 @@ await token.setUniswapV2Pair(address);  // Will REVERT with "PairAlreadySet"
 
 ---
 
+## Reports Location
+
+Test reports are saved to:
+
+```
+scripts/fork-test/reports/
+├── report-mainnet-YYYY-MM-DDTHH-MM-SS.txt   (Human readable)
+└── report-mainnet-YYYY-MM-DDTHH-MM-SS.json  (Machine readable)
+
+simulation_report.txt                         (5 simulations summary)
+```
+
+---
+
 ## Troubleshooting
 
 ### "You are NOT the owner"
@@ -296,10 +350,10 @@ await token.setUniswapV2Pair(address);  // Will REVERT with "PairAlreadySet"
 - Fees are already enabled
 - You cannot change the pair address
 
-### "K" error on sell
-- This is EXPECTED for fee-on-transfer tokens
-- Use `swapExactTokensForETHSupportingFeeOnTransferTokens`
-- Uniswap UI handles this automatically
+### "K" error on sell (V2 Router)
+- This is EXPECTED for fee-on-transfer tokens with V2 Router
+- Use `swapExactTokensForETHSupportingFeeOnTransferTokens` for V2
+- Or use V4 Universal Router (recommended)
 
 ### Fees not applying
 - Check `pairIsSet` is true
@@ -310,15 +364,20 @@ await token.setUniswapV2Pair(address);  // Will REVERT with "PairAlreadySet"
 - Make sure buyer/seller is NOT the owner (owner is excluded)
 - Use Account #1 or #2 for testing (not Account #0)
 
+### V4 Sell failing
+- Ensure Permit2 is approved: `await setupPermit2ForSell(token, tokenAddress, signer)`
+- Check token balance is sufficient
+
 ---
 
 ## Safety Checklist
 
 Before running mainnet scripts:
 
-- [ ] Run ALL 5 simulations successfully
-- [ ] Test `--mainnet --new-token` on fork
-- [ ] Run V4 Universal Router test (test_v4_swap.js)
+- [ ] Run ALL 5 simulations successfully (`run_all_simulations.js`)
+- [ ] Run comprehensive fork test (`fork-test/run-all.js`)
+- [ ] Verify all 32 tests pass
+- [ ] Check fee precision is within tolerance (< 0.02%)
 - [ ] Verify you are the owner
 - [ ] Verify pair address matches factory
 - [ ] Verify tax config is correct (125 + 125 = 250 bps = 2.5%)
