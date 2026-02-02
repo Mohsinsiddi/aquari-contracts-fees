@@ -1,51 +1,49 @@
-version: "3.8"
+version: '3.8'
+
+# ═══════════════════════════════════════════════════════════
+# AQUARI Fee Enablement - Fork Testing Environment
+# ═══════════════════════════════════════════════════════════
+#
+# USAGE:
+#   docker compose up -d          # Start Anvil fork
+#   docker compose logs -f        # View logs
+#   docker compose down           # Stop
+#
+# Then run fork tests:
+#   npx hardhat run scripts/fork-test/run-all.js --network fork -- --mainnet --new-token
+#
+# ═══════════════════════════════════════════════════════════
 
 services:
-  # Base mainnet fork using Anvil (Foundry)
+  # ─────────────────────────────────────────────────────────
+  # Anvil - Base mainnet fork for testing
+  # RPC URL: http://localhost:8545
+  # ─────────────────────────────────────────────────────────
   fork:
     image: ghcr.io/foundry-rs/foundry:latest
-    platform: linux/amd64
+    container_name: aquari-fork
     ports:
       - "8545:8545"
-    environment:
-      # Use BASE_RPC from .env or default to BlastAPI (fast, free)
-      - BASE_RPC=${BASE_RPC:-https://base-mainnet.public.blastapi.io}
-    command: >
-      sh -c "anvil
-      --fork-url $${BASE_RPC}
-      --chain-id 8453
-      --host 0.0.0.0
-      --port 8545
-      --accounts 10
-      --balance 10000
-      --block-time 1"
+    entrypoint: ["anvil"]
+    command:
+      - "--fork-url"
+      - "https://base-mainnet.public.blastapi.io"
+      - "--host"
+      - "0.0.0.0"
+      - "--port"
+      - "8545"
+      - "--chain-id"
+      - "8453"
+      - "--accounts"
+      - "10"
+      - "--balance"
+      - "10000"
+      - "--block-time"
+      - "1"
     healthcheck:
-      test: ["CMD-SHELL", "cast chain-id --rpc-url http://localhost:8545 2>/dev/null || exit 1"]
-      interval: 5s
-      timeout: 3s
+      test: ["CMD", "cast", "block-number", "--rpc-url", "http://localhost:8545"]
+      interval: 10s
+      timeout: 5s
       retries: 10
       start_period: 30s
-
-  # Alternative: Hardhat node fork (slower but works if Anvil has issues)
-  fork-hardhat:
-    image: node:20-alpine
-    working_dir: /app
-    volumes:
-      - .:/app
-      - node_modules:/app/node_modules
-    ports:
-      - "8546:8545"
-    environment:
-      - NODE_OPTIONS=--max-old-space-size=4096
-    command: >
-      sh -c "
-        echo 'Installing dependencies...' &&
-        npm install --silent &&
-        echo 'Starting Base mainnet fork (Hardhat)...' &&
-        npx hardhat node --fork https://mainnet.base.org --hostname 0.0.0.0
-      "
-    profiles:
-      - hardhat
-
-volumes:
-  node_modules:
+    restart: unless-stopped

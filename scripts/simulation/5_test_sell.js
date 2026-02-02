@@ -52,9 +52,15 @@ async function main() {
         process.exit(1);
     }
 
-    const [deployer] = await ethers.getSigners();
-    const token = new ethers.Contract(config.token, TOKEN_ABI, deployer);
-    const router = new ethers.Contract(network.uniswapV2.router, ROUTER_ABI, deployer);
+    const signers = await ethers.getSigners();
+    const deployer = signers[0];
+    // Use account #1 as seller (has tokens from buy test, not excluded from fees)
+    const seller = signers[1];
+
+    const token = new ethers.Contract(config.token, TOKEN_ABI, seller);
+    const router = new ethers.Contract(network.uniswapV2.router, ROUTER_ABI, seller);
+
+    console.log(`Seller:      ${seller.address} (Account #1 - NOT excluded from fees)`);
 
     const tokenSymbol = await token.symbol();
     const burnTax = await token.burnTax();
@@ -68,7 +74,7 @@ async function main() {
     console.log("");
 
     // Balances before
-    const sellerTokensBefore = await token.balanceOf(deployer.address);
+    const sellerTokensBefore = await token.balanceOf(seller.address);
     const foundationBefore = await token.balanceOf(foundationWallet);
     const totalSupplyBefore = await token.totalSupply();
 
@@ -111,7 +117,7 @@ async function main() {
 
     try {
         await router.swapExactTokensForETH.staticCall(
-            sellAmount, 0, path, deployer.address, deadline
+            sellAmount, 0, path, seller.address, deadline
         );
         console.log("⚠️  Regular swap succeeded (unexpected)");
     } catch (e) {
@@ -130,14 +136,14 @@ async function main() {
 
     console.log("Executing sell...");
     const tx = await router.swapExactTokensForETHSupportingFeeOnTransferTokens(
-        sellAmount, 0, path, deployer.address, deadline
+        sellAmount, 0, path, seller.address, deadline
     );
     await tx.wait();
     console.log("✅ Sell executed!");
     console.log("");
 
     // Balances after
-    const sellerTokensAfter = await token.balanceOf(deployer.address);
+    const sellerTokensAfter = await token.balanceOf(seller.address);
     const foundationAfter = await token.balanceOf(foundationWallet);
     const totalSupplyAfter = await token.totalSupply();
 

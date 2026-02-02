@@ -4,7 +4,7 @@
  * =============================================================================
  */
 
-const { ethers, upgrades } = require("hardhat");
+const { ethers } = require("hardhat");
 const { MAINNET, BASE, ABIS, TEST_PARAMS } = require("../config");
 const { loadState, saveState } = require("./state");
 
@@ -176,14 +176,28 @@ async function setupContext() {
             }
             console.log("");
 
-            // Step 1: Deploy proxy (transparent - same as mainnet)
-            console.log("Step 1/3: Deploying AquariTest (Transparent Proxy)...");
-            const AquariTest = await ethers.getContractFactory("AquariTest");
-            const proxy = await upgrades.deployProxy(AquariTest, [signerAddress], {
-                initializer: "initialize",
-                kind: "transparent",
-                unsafeAllow: ["constructor", "delegatecall", "state-variable-immutable", "missing-initializer", "incorrect-initializer-order"],
-            });
+            // Step 1: Deploy proxy (UUPS - same as mainnet, skip validation)
+            console.log("Step 1/3: Deploying AquariProtocol (UUPS Proxy, same as mainnet)...");
+            const { upgrades } = require("hardhat");
+
+            // Skip validation - same approach as legacy/deploy.js
+            process.env.HARDHAT_UPGRADES_SKIP_VALIDATION = "true";
+
+            const AquariProtocol = await ethers.getContractFactory("AquariProtocol");
+            const proxy = await upgrades.deployProxy(
+                AquariProtocol,
+                [signerAddress],
+                {
+                    initializer: "initialize",
+                    kind: "uups",
+                    timeout: 0,
+                    unsafeAllow: ['constructor', 'delegatecall', 'missing-public-upgradeto', 'state-variable-immutable', 'state-variable-assignment', 'external-library-linking', 'selfdestruct', 'internal-function-storage', 'missing-initializer-call'],
+                    unsafeSkipStorageCheck: true,
+                    unsafeAllowLinkedLibraries: true,
+                    unsafeAllowCustomTypes: true,
+                    constructorArgs: []
+                }
+            );
             await proxy.waitForDeployment();
 
             proxyAddress = await proxy.getAddress();
@@ -249,7 +263,7 @@ async function setupContext() {
                 deployedAt: new Date().toISOString(),
             });
 
-            console.log("CONTRACT INFO (SIMULATION - NEW):");
+            console.log("CONTRACT INFO (NEW DEPLOYMENT - AquariProtocol):");
             console.log(`  Proxy:          ${proxyAddress}`);
             console.log(`  Implementation: ${implementationAddress}`);
             console.log(`  Pair:           ${pairAddress}`);

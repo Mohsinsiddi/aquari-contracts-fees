@@ -45,7 +45,7 @@ const MODE = "simulation";  // Options: "simulation" | "mainnet"
 // SIMULATION SELECTION - Which test scenario to run (1-5)
 // =============================================================================
 
-const ACTIVE_SIMULATION = 1;  // Options: 1, 2, 3, 4, 5
+const ACTIVE_SIMULATION = 5;  // Options: 1, 2, 3, 4, 5
 
 // =============================================================================
 // NETWORK CONFIGURATION

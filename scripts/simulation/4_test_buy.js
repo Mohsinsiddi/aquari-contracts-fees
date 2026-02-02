@@ -52,9 +52,15 @@ async function main() {
         process.exit(1);
     }
 
-    const [deployer] = await ethers.getSigners();
+    const signers = await ethers.getSigners();
+    const deployer = signers[0];
+    // Use account #1 as buyer (not excluded from fees)
+    const buyer = signers[1];
+
     const token = new ethers.Contract(config.token, TOKEN_ABI, deployer);
-    const router = new ethers.Contract(network.uniswapV2.router, ROUTER_ABI, deployer);
+    const router = new ethers.Contract(network.uniswapV2.router, ROUTER_ABI, buyer);
+
+    console.log(`Buyer:       ${buyer.address} (Account #1 - NOT excluded from fees)`);
 
     const tokenSymbol = await token.symbol();
     const pairIsSet = await token.pairIsSet();
@@ -77,7 +83,7 @@ async function main() {
     console.log("");
 
     // Balances before
-    const buyerBalanceBefore = await token.balanceOf(deployer.address);
+    const buyerBalanceBefore = await token.balanceOf(buyer.address);
     const foundationBalanceBefore = await token.balanceOf(foundationWallet);
     const totalSupplyBefore = await token.totalSupply();
 
@@ -105,7 +111,7 @@ async function main() {
     const tx = await router.swapExactETHForTokens(
         0,
         path,
-        deployer.address,
+        buyer.address,
         deadline,
         { value: buyAmount }
     );
@@ -114,7 +120,7 @@ async function main() {
     console.log("");
 
     // Balances after
-    const buyerBalanceAfter = await token.balanceOf(deployer.address);
+    const buyerBalanceAfter = await token.balanceOf(buyer.address);
     const foundationBalanceAfter = await token.balanceOf(foundationWallet);
     const totalSupplyAfter = await token.totalSupply();
 
