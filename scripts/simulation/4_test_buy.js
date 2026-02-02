@@ -1,9 +1,9 @@
 /**
  * =============================================================================
- * SIMULATION STEP 4: Test Buy
+ * SIMULATION STEP 4: Test Buy (V4 Universal Router)
  * =============================================================================
  *
- * Tests buying tokens to verify fees are applied correctly.
+ * Tests buying tokens via V4 Universal Router to verify fees are applied.
  *
  * PREVIOUS: 3_set_pair.js
  * NEXT: 5_test_sell.js
@@ -18,6 +18,11 @@ const {
     printDisclaimer,
     printAllSimulations,
 } = require("../config");
+const {
+    getUniversalRouter,
+    buyTokensWithETH,
+    UNIVERSAL_ROUTER_ADDRESS,
+} = require("../utils/universalRouter");
 
 const TOKEN_ABI = [
     "function balanceOf(address) view returns (uint256)",
@@ -30,37 +35,30 @@ const TOKEN_ABI = [
     "function symbol() view returns (string)"
 ];
 
-const ROUTER_ABI = [
-    "function swapExactETHForTokens(uint256 amountOutMin, address[] path, address to, uint256 deadline) payable returns (uint256[] amounts)",
-    "function getAmountsOut(uint256 amountIn, address[] path) view returns (uint256[] amounts)"
-];
-
 async function main() {
     printDisclaimer();
 
     console.log("=".repeat(70));
-    console.log(`STEP 4: TEST BUY (Simulation #${ACTIVE_SIMULATION})`);
+    console.log(`STEP 4: TEST BUY via V4 (Simulation #${ACTIVE_SIMULATION})`);
     console.log("=".repeat(70));
     console.log("");
 
     const config = getConfig();
     const network = NETWORKS.base;
 
-    // Check prerequisites
     if (!config.token) {
         console.log("❌ Error: Token not deployed. Run 0_deploy.js first.");
         process.exit(1);
     }
 
     const signers = await ethers.getSigners();
-    const deployer = signers[0];
-    // Use account #1 as buyer (not excluded from fees)
-    const buyer = signers[1];
+    const trader = signers[1]; // Account #1 - NOT excluded from fees
 
-    const token = new ethers.Contract(config.token, TOKEN_ABI, deployer);
-    const router = new ethers.Contract(network.uniswapV2.router, ROUTER_ABI, buyer);
+    const token = new ethers.Contract(config.token, TOKEN_ABI, trader);
+    const universalRouter = getUniversalRouter(trader);
 
-    console.log(`Buyer:       ${buyer.address} (Account #1 - NOT excluded from fees)`);
+    console.log(`Buyer:       ${trader.address} (Account #1 - NOT excluded from fees)`);
+    console.log(`V4 Router:   ${UNIVERSAL_ROUTER_ADDRESS}`);
 
     const tokenSymbol = await token.symbol();
     const pairIsSet = await token.pairIsSet();
@@ -73,17 +71,19 @@ async function main() {
     const burnTax = await token.burnTax();
     const foundationFee = await token.foundationFee();
     const foundationWallet = await token.foundationWallet();
+    const expectedFeeBps = Number(burnTax) + Number(foundationFee);
 
     console.log("─".repeat(70));
     console.log("TAX CONFIGURATION");
     console.log("─".repeat(70));
-    console.log(`Burn Tax:       ${burnTax} (${Number(burnTax)/100}%)`);
-    console.log(`Foundation Fee: ${foundationFee} (${Number(foundationFee)/100}%)`);
-    console.log(`Total Tax:      ${Number(burnTax) + Number(foundationFee)} bps`);
+    console.log(`Burn Tax:       ${burnTax} bps (${Number(burnTax)/100}%)`);
+    console.log(`Foundation Fee: ${foundationFee} bps (${Number(foundationFee)/100}%)`);
+    console.log(`Total Tax:      ${expectedFeeBps} bps (${expectedFeeBps/100}%)`);
+    console.log(`Expected Fee:   ${pairIsSet ? expectedFeeBps/100 + "%" : "0% (pairIsSet=false)"}`);
     console.log("");
 
     // Balances before
-    const buyerBalanceBefore = await token.balanceOf(buyer.address);
+    const buyerBalanceBefore = await token.balanceOf(trader.address);
     const foundationBalanceBefore = await token.balanceOf(foundationWallet);
     const totalSupplyBefore = await token.totalSupply();
 
@@ -95,38 +95,40 @@ async function main() {
     console.log(`Total Supply: ${ethers.formatEther(totalSupplyBefore)} ${tokenSymbol}`);
     console.log("");
 
-    // Buy
+    // Buy via V4
     const buyAmount = ethers.parseEther("0.001");
-    const path = [network.weth, config.token];
+    const deadline = Math.floor(Date.now() / 1000) + 1200;
 
     console.log("─".repeat(70));
-    console.log("BUY ORDER");
+    console.log("BUY ORDER (V4 Universal Router)");
     console.log("─".repeat(70));
     console.log(`Buying with: ${ethers.formatEther(buyAmount)} ETH`);
     console.log("");
 
-    console.log("Executing buy...");
-    const deadline = Math.floor(Date.now() / 1000) + 1200;
-
-    const tx = await router.swapExactETHForTokens(
-        0,
-        path,
-        buyer.address,
-        deadline,
-        { value: buyAmount }
+    console.log("Executing buy via V4...");
+    const tx = await buyTokensWithETH(
+        universalRouter,
+        config.token,
+        network.weth,
+        trader.address,
+        buyAmount,
+        0n,
+        deadline
     );
     await tx.wait();
     console.log("✅ Buy executed!");
     console.log("");
 
     // Balances after
-    const buyerBalanceAfter = await token.balanceOf(buyer.address);
+    const buyerBalanceAfter = await token.balanceOf(trader.address);
     const foundationBalanceAfter = await token.balanceOf(foundationWallet);
     const totalSupplyAfter = await token.totalSupply();
 
     const tokensReceived = buyerBalanceAfter - buyerBalanceBefore;
     const foundationReceived = foundationBalanceAfter - foundationBalanceBefore;
     const tokensBurned = totalSupplyBefore - totalSupplyAfter;
+    const totalFees = foundationReceived + tokensBurned;
+    const grossTokens = tokensReceived + totalFees;
 
     console.log("─".repeat(70));
     console.log("BALANCES AFTER BUY");
@@ -137,34 +139,55 @@ async function main() {
     console.log("");
 
     console.log("─".repeat(70));
-    console.log("FEE ANALYSIS");
+    console.log("FEE ANALYSIS (STRICT)");
     console.log("─".repeat(70));
+    console.log(`Gross Tokens:        ${ethers.formatEther(grossTokens)}`);
     console.log(`Tokens Received:     ${ethers.formatEther(tokensReceived)}`);
     console.log(`Foundation Received: ${ethers.formatEther(foundationReceived)}`);
     console.log(`Tokens Burned:       ${ethers.formatEther(tokensBurned)}`);
+    console.log(`Total Fees:          ${ethers.formatEther(totalFees)}`);
     console.log("");
 
-    // Check if fees applied
-    const feesApplied = foundationReceived > 0n || tokensBurned > 0n;
+    // Calculate actual fee percentage
+    const actualFeeBps = grossTokens > 0n ? Number((totalFees * 10000n) / grossTokens) : 0;
+    const actualFeePercent = actualFeeBps / 100;
+    const expectedFeePercent = pairIsSet ? expectedFeeBps / 100 : 0;
+    const precisionLoss = Math.abs(actualFeePercent - expectedFeePercent);
 
+    console.log(`Expected Fee:        ${expectedFeePercent.toFixed(4)}%`);
+    console.log(`Actual Fee:          ${actualFeePercent.toFixed(4)}%`);
+    console.log(`Actual Fee (bps):    ${actualFeeBps} bps`);
+    console.log(`Precision Loss:      ${precisionLoss.toFixed(6)}%`);
+
+    // Verify burn/foundation split (should be 50/50)
+    if (totalFees > 0n) {
+        const burnSplit = Number((tokensBurned * 10000n) / totalFees) / 100;
+        const foundationSplit = Number((foundationReceived * 10000n) / totalFees) / 100;
+        console.log(`Burn Split:          ${burnSplit.toFixed(2)}% of fees`);
+        console.log(`Foundation Split:    ${foundationSplit.toFixed(2)}% of fees`);
+    }
+    console.log("");
+
+    // Result
     console.log("─".repeat(70));
     console.log("RESULT");
     console.log("─".repeat(70));
 
-    if (feesApplied) {
-        console.log("✅ FEES WERE APPLIED!");
-        const totalFees = foundationReceived + tokensBurned;
-        const totalOutput = tokensReceived + totalFees;
-        console.log(`   Total fees: ${ethers.formatEther(totalFees)} (${(Number(totalFees) / Number(totalOutput) * 100).toFixed(2)}%)`);
+    const pass = precisionLoss < 0.02; // 0.02% tolerance
+
+    if (pass) {
+        console.log("✅ FEES APPLIED CORRECTLY!");
+        console.log(`   Expected: ${expectedFeePercent}%`);
+        console.log(`   Actual:   ${actualFeePercent.toFixed(4)}%`);
+        console.log(`   Precision Loss: ${precisionLoss.toFixed(6)}%`);
     } else {
-        console.log("❌ NO FEES APPLIED");
-        if (!pairIsSet) {
-            console.log("   Reason: pairIsSet is false");
-        } else {
-            console.log("   Reason: Possibly wrong pair address set");
-        }
+        console.log("❌ FEE MISMATCH!");
+        console.log(`   Expected: ${expectedFeePercent}%`);
+        console.log(`   Actual:   ${actualFeePercent.toFixed(4)}%`);
     }
     console.log("");
+
+    printAllSimulations();
 
     console.log("═".repeat(70));
     console.log("✅ STEP 4 COMPLETE");

@@ -90,7 +90,11 @@ scripts/
 │   ├── 4_test_buy.js            Test buying tokens (verify fees)
 │   ├── 5_test_sell.js           Test selling tokens (verify fees)
 │   ├── 6_verify_state.js        Verify final state
+│   ├── test_v4_swap.js          ★ Test V4 Universal Router (UI swaps)
 │   └── run_all_simulations.js   ★ Master script (runs all 5 sims)
+│
+├── utils/                       ← Utility modules
+│   └── universalRouter.js       V4 Universal Router helpers
 │
 ├── fork-test/                   ← Automated fork testing
 │   ├── run-all.js               Main test runner
@@ -149,6 +153,7 @@ scripts/
 | 4_test_buy.js | Tests buy, verifies fees applied | N/A |
 | 5_test_sell.js | Tests sell, verifies fees applied | N/A |
 | 6_verify_state.js | Shows final state | N/A |
+| **test_v4_swap.js** | Tests V4 Universal Router (UI) | N/A |
 
 ### Mainnet Scripts
 
@@ -182,7 +187,7 @@ setUniswapV2Pair() → Enables fees (ONE TIME, IRREVERSIBLE!)
 - Owner is excluded from fees by default
 - Test with non-owner account (Account #1) for accurate results
 
-### 4. Sell Method
+### 4. Sell Method (V2 Router)
 
 ```javascript
 // ❌ Regular swap FAILS for fee tokens
@@ -190,6 +195,33 @@ router.swapExactTokensForETH(...)  // FAILS with "K" error
 
 // ✅ Use SupportingFeeOnTransferTokens
 router.swapExactTokensForETHSupportingFeeOnTransferTokens(...)  // WORKS
+```
+
+### 5. V4 Universal Router (UI Swaps)
+
+The Uniswap UI uses the **V4 Universal Router** which calls V2 pairs directly.
+Fees apply correctly for both buy and sell operations.
+
+```bash
+# Test V4 swaps
+npx hardhat run scripts/simulation/test_v4_swap.js --network fork
+```
+
+**Results:**
+| Operation | Method | Fee Applied |
+|-----------|--------|-------------|
+| BUY | V4 Universal Router | 2.5% ✅ |
+| SELL | V4 Universal Router | 2.5% ✅ |
+
+**Important for V4 SELL:** Universal Router uses **Permit2** for token transfers:
+1. Approve Permit2 for the token (ERC20 approval)
+2. Approve Universal Router via Permit2
+3. Then sell works correctly
+
+```javascript
+// Utility helper available
+const { setupPermit2ForSell } = require("./utils/universalRouter");
+await setupPermit2ForSell(token, tokenAddress, signer);
 ```
 
 ---
@@ -286,6 +318,7 @@ Before running mainnet scripts:
 
 - [ ] Run ALL 5 simulations successfully
 - [ ] Test `--mainnet --new-token` on fork
+- [ ] Run V4 Universal Router test (test_v4_swap.js)
 - [ ] Verify you are the owner
 - [ ] Verify pair address matches factory
 - [ ] Verify tax config is correct (125 + 125 = 250 bps = 2.5%)
