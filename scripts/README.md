@@ -1,5 +1,27 @@
 # AQUARI Scripts
 
+## Quick Start (Test REAL Mainnet Contract)
+
+```bash
+# 1. Setup
+cp .env.example .env
+npm install
+
+# 2. Start Docker fork
+docker compose up -d
+
+# 3. Test REAL mainnet AQUARI (impersonates owner - no key needed!)
+docker restart aquari-fork && npx hardhat run scripts/fork-test/test-real-aquari.js --network fork
+```
+
+This tests the **actual deployed AQUARI contract** (`0x7f0e9971...`) on a fork by impersonating the real owner. Shows:
+- Contract state, LP reserves, token balances
+- setTaxConfig() and setUniswapV2Pair() execution
+- BUY/SELL via V4 Universal Router with fees
+- Reserve changes after each swap
+
+---
+
 ## Disclaimer
 
 ```
