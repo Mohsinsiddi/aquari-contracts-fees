@@ -1,189 +1,188 @@
-# AQUARI Token - Tax Configuration Scripts
+# AQUARI Token - Smart Contracts
 
-## ⚠️ IMPORTANT SAFETY WARNINGS
+AQUARI is a fee-on-transfer token deployed on Base mainnet with UUPS upgradeable proxy pattern.
+
+---
+
+## Quick Links
+
+| Resource | Link |
+|----------|------|
+| **Scripts Documentation** | [`scripts/README.md`](scripts/README.md) |
+| **Token Contract** | [BaseScan](https://basescan.org/address/0x7f0e9971d3320521fc88f863e173a4cddbb051ba) |
+| **LP Pair** | [BaseScan](https://basescan.org/address/0x30Ec7B2f5be26d03D20AC86554dAadD2b738CA0F) |
+
+---
+
+## Safety Warnings
 
 ```
 ╔════════════════════════════════════════════════════════════════════════════╗
-║                    🔐 ADMIN KEY SAFETY                                     ║
+║                         IMPORTANT SAFETY NOTICES                           ║
 ╠════════════════════════════════════════════════════════════════════════════╣
 ║                                                                            ║
 ║   • NEVER share your admin private keys with anyone                        ║
 ║   • NEVER commit private keys to git or any repository                     ║
-║   • ALWAYS double-check you are running the correct script                 ║
-║   • ALWAYS verify contract addresses before running                        ║
-║   • Scripts in /scripts/mainnet/ are for MAINNET - use with caution!       ║
-║   • Other scripts in /scripts/ folder may exist - verify before running    ║
+║   • ALWAYS test on fork before running on mainnet                          ║
+║   • setUniswapV2Pair() is IRREVERSIBLE - cannot be changed after!          ║
 ║                                                                            ║
 ╚════════════════════════════════════════════════════════════════════════════╝
 ```
 
 ---
 
-## 📋 Contract Addresses
+## Contract Addresses
 
-### TESTNET (AQUARIT) - For Testing
+### AQUARI Token (Mainnet)
+
 | Contract | Address |
 |----------|---------|
-| Token | `0x78D84c417bE56da7eA5694acAc5E85EE14E46138` |
-| Pair | `0xcb02d34fBD34dC5af95bABb3AFE7bF23c376b6a7` |
+| Token (Proxy) | `0x7f0e9971d3320521fc88f863e173a4cddbb051ba` |
+| Implementation | `0x0bb57147519d8b997c7c6bca8ff3c0251f82fb05` |
+| LP Pair | `0x30Ec7B2f5be26d03D20AC86554dAadD2b738CA0F` |
 | Foundation Wallet | `0x13B9110A72A8D08A4c08c411143AEDbf0c3FC235` |
+| Owner | `0x187ED96248Bbbbf4D5b059187e030B7511b67801` |
 
-### MAINNET (AQUARI) - Production
+### Test Token (AQTEST)
+
 | Contract | Address |
 |----------|---------|
-| Token | `0x7f0e9971d3320521fc88f863e173a4cddbb051ba` |
-| Pair | `0x30Ec7B2f5be26d03D20AC86554dAadD2b738CA0F` |
-| Foundation Wallet | `[VERIFY BEFORE RUNNING]` |
+| Token (Proxy) | `0xDA1f4C0368E95211bd7884CeAB11d3517A783faE` |
+| LP Pair | `0x7DB573840a722a07187F9FdAAecbbf8E1cfAa7A0` |
 
-### Base Chain Addresses (Same for both)
+### Base Network Infrastructure
+
 | Contract | Address |
 |----------|---------|
 | WETH | `0x4200000000000000000000000000000000000006` |
-| Uniswap V2 Router | `0x4752ba5DBc23f44D87826276BF6Fd6b1C372aD24` |
 | Uniswap V2 Factory | `0x8909Dc15e40173Ff4699343b6eB8132c65e18eC6` |
-| Universal Router V4 | `0x6fF5693b99212Da76ad316178A184AB56D299b43` |
+| Uniswap V2 Router | `0x4752ba5DBc23f44D87826276BF6Fd6b1C372aD24` |
+| V4 Universal Router | `0x6ff5693b99212da76ad316178a184ab56d299b43` |
+| Permit2 | `0x000000000022D473030F116dDEE9F6B43aC78BA3` |
 
 ---
 
-## 📁 Script Location
+## Fee Configuration
+
+| Parameter | Value | Description |
+|-----------|-------|-------------|
+| `burnTax` | 125 bps | 1.25% burned on each trade |
+| `foundationFee` | 125 bps | 1.25% to foundation wallet |
+| **Total** | **250 bps** | **2.5% total fee** |
+
+---
+
+## Getting Started
+
+### 1. Install Dependencies
+
+```bash
+npm install
+```
+
+### 2. Setup Environment
+
+```bash
+cp .env.example .env
+```
+
+Edit `.env`:
+```env
+ADMIN_KEY=your_private_key_here
+BASE_RPC=https://mainnet.base.org
+BASESCAN_API_KEY=your_api_key
+```
+
+### 3. Start Fork Node (for testing)
+
+```bash
+docker compose up -d
+```
+
+### 4. Run Scripts
+
+See [`scripts/README.md`](scripts/README.md) for complete documentation.
+
+**Quick Start - Fork Testing:**
+```bash
+docker restart aquari-fork && sleep 3
+npx hardhat run scripts/mainnet-execution/1_verify_before.js --network fork
+npx hardhat run scripts/mainnet-execution/2_set_fees.js --network fork
+npx hardhat run scripts/mainnet-execution/2b_test_trading_before.js --network fork
+npx hardhat run scripts/mainnet-execution/3_enable_fees.js --network fork
+npx hardhat run scripts/mainnet-execution/4_verify_after.js --network fork
+npx hardhat run scripts/mainnet-execution/5_test_trading_after.js --network fork
+```
+
+---
+
+## Project Structure
 
 ```
 aquari-contracts/
-├── scripts/
-│   ├── mainnet/
-│   │   └── 1_setPairAndFees.js    ← Set pair address & tax rates
-│   └── [other scripts - VERIFY before running!]
+├── contracts/               # Solidity smart contracts
+│   ├── Aquari.sol          # Main AQUARI token
+│   └── AquariTest.sol      # Test token variant
+│
+├── scripts/                 # Deployment & testing scripts
+│   ├── README.md           # ⭐ COMPREHENSIVE DOCUMENTATION
+│   ├── mainnet-execution/  # Production scripts for AQUARI
+│   ├── test-token/         # Test token deployment
+│   ├── fork-test/          # Automated test suite (28+ tests)
+│   ├── simulation/         # Simulation scenarios
+│   └── utils/              # Shared utilities
+│
+├── test/                    # Hardhat tests
+├── deployments/             # Deployment artifacts
+└── docker-compose.yml       # Anvil fork configuration
 ```
-
-⚠️ **WARNING:** Other scripts may exist in the `/scripts/` folder. Always verify you are running the correct script before using admin keys!
 
 ---
 
-## 🔧 Setup
+## Available Scripts
 
-### 1. Environment Variables
+### Fork Testing (No private key needed)
 
-Create a `.env` file in the project root:
+| Script | Purpose |
+|--------|---------|
+| `mainnet-execution/1_verify_before.js` | Pre-flight verification |
+| `mainnet-execution/2_set_fees.js` | Set tax configuration |
+| `mainnet-execution/2b_test_trading_before.js` | Test trades (0% fee) |
+| `mainnet-execution/3_enable_fees.js` | Enable fees (IRREVERSIBLE) |
+| `mainnet-execution/4_verify_after.js` | Verify fees enabled |
+| `mainnet-execution/5_test_trading_after.js` | Test trades (2.5% fee) |
+
+### Test Token (Base Mainnet)
+
+| Script | Purpose |
+|--------|---------|
+| `test-token/1_deploy.js` | Deploy AQTEST token |
+| `test-token/2_add_liquidity.js` | Create LP pair |
+| `test-token/3_verify_state.js` | Verify deployment |
+| `test-token/4_configure.js` | Enable fees |
+
+### Automated Test Suite
 
 ```bash
-# Admin wallet (Token Owner) - KEEP SAFE!
-ONCHAINKEY=0x_YOUR_ADMIN_PRIVATE_KEY_HERE
-```
-
-### 2. Verify hardhat.config.js
-
-Ensure your `hardhat.config.js` has the account:
-
-```javascript
-baseMainnet: {
-  url: "https://base-mainnet.g.alchemy.com/v2/YOUR_API_KEY",
-  accounts: [process.env.ONCHAINKEY],
-  chainId: 8453,
-},
+npx hardhat run scripts/fork-test/run-all.js --network fork
+npx hardhat run scripts/fork-test/test-real-aquari.js --network fork
 ```
 
 ---
 
-## 📜 Script: Set Pair & Fees
+## Documentation
 
-**Location:** `scripts/mainnet/1_setPairAndFees.js`
+For complete documentation including:
+- Step-by-step fork testing with expected outputs
+- Test token deployment workflow
+- Mainnet execution guide
+- All 28+ test cases
+- Troubleshooting
 
-**What it does:**
-1. Sets tax configuration (burn tax + foundation fee)
-2. Sets Uniswap V2 Pair address (enables taxes on swaps)
-
-### Configuration (at top of script)
-
-```javascript
-const CONFIG = {
-  // TESTNET (AQUARIT) - Current
-  TOKEN: "0x78D84c417bE56da7eA5694acAc5E85EE14E46138",
-  PAIR: "0xcb02d34fBD34dC5af95bABb3AFE7bF23c376b6a7",
-
-  // MAINNET (AQUARI) - Uncomment for production
-  // TOKEN: "0x7f0e9971d3320521fc88f863e173a4cddbb051ba",
-  // PAIR: "0x30Ec7B2f5be26d03D20AC86554dAadD2b738CA0F",
-};
-
-const TAX_CONFIG = {
-  BURN_TAX_BPS: 125,           // 1.25%
-  FOUNDATION_FEE_BPS: 125,     // 1.25%
-  // Total Tax = 2.5%
-};
-```
-
-### Run Command
-
-```bash
-# ⚠️ DOUBLE CHECK CONFIG BEFORE RUNNING!
-npx hardhat run scripts/mainnet/1_setPairAndFees.js --network baseMainnet
-```
+**See: [`scripts/README.md`](scripts/README.md)**
 
 ---
 
-## ✅ Expected Results
+## Support
 
-After running the script successfully:
-
-```
-✅ STEP 6: FINAL CONTRACT STATE
-══════════════════════════════════════════════════════════════════════════════
-Pair Is Set:        ✅ YES (TAXES NOW ACTIVE!)
-Pair Address:       0x30Ec7B2f5be26d03D20AC86554dAadD2b738CA0F
-──────────────────────────────────────────────────────────────────────────────
-Burn Tax:           125 bps (1.25%)
-Foundation Fee:     125 bps (1.25%)
-Total Tax:          250 bps (2.5%)
-Foundation Wallet:  [Your Foundation Wallet]
-
-╔════════════════════════════════════════════════════════════════════════════╗
-║                    ✅ CONFIGURATION COMPLETE                               ║
-╚════════════════════════════════════════════════════════════════════════════╝
-```
-
----
-
-## 🔄 Switching from TESTNET to MAINNET
-
-1. Open `scripts/mainnet/1_setPairAndFees.js`
-2. Comment out TESTNET addresses
-3. Uncomment MAINNET addresses:
-
-```javascript
-const CONFIG = {
-  // TESTNET (AQUARIT) - Comment out for mainnet
-  // TOKEN: "0x78D84c417bE56da7eA5694acAc5E85EE14E46138",
-  // PAIR: "0xcb02d34fBD34dC5af95bABb3AFE7bF23c376b6a7",
-
-  // MAINNET (AQUARI) - Uncomment for production
-  TOKEN: "0x7f0e9971d3320521fc88f863e173a4cddbb051ba",
-  PAIR: "0x30Ec7B2f5be26d03D20AC86554dAadD2b738CA0F",
-};
-```
-
-4. Verify tax configuration is correct
-5. Run the script
-
----
-
-## ❓ Troubleshooting
-
-### "Caller is not owner"
-- Make sure `ONCHAINKEY` in `.env` is the token owner's private key
-
-### "Insufficient ETH for gas"
-- Send ETH to the admin wallet for gas fees
-
-### "execution reverted"
-- Verify contract addresses are correct
-- Check if function exists on contract
-- Ensure you have owner permissions
-
----
-
-## 📞 Support
-
-If you encounter issues:
-1. Verify all addresses match your deployment
-2. Check you're using the correct network
-3. Ensure admin wallet has ETH for gas
+For issues or questions, contact the development team.
