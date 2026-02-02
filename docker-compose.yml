@@ -7,17 +7,20 @@ services:
     platform: linux/amd64
     ports:
       - "8545:8545"
+    environment:
+      # Use BASE_RPC from .env or default to BlastAPI (fast, free)
+      - BASE_RPC=${BASE_RPC:-https://base-mainnet.public.blastapi.io}
     command: >
-      anvil
-      --fork-url https://mainnet.base.org
+      sh -c "anvil
+      --fork-url $${BASE_RPC}
       --chain-id 8453
       --host 0.0.0.0
       --port 8545
       --accounts 10
       --balance 10000
-      --block-time 1
+      --block-time 1"
     healthcheck:
-      test: ["CMD-SHELL", "cast chain-id --rpc-url http://localhost:8545 || exit 1"]
+      test: ["CMD-SHELL", "cast chain-id --rpc-url http://localhost:8545 2>/dev/null || exit 1"]
       interval: 5s
       timeout: 3s
       retries: 10
