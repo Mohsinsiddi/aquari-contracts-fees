@@ -56,7 +56,11 @@ function assertAddressEqual(actual, expected, message) {
  */
 async function assertReverts(fn, expectedError = null, message = "Expected revert") {
     try {
-        await fn();
+        const result = await fn();
+        // If fn returns a transaction, wait for it
+        if (result && typeof result.wait === 'function') {
+            await result.wait();
+        }
         throw new Error(`${message}: transaction did not revert`);
     } catch (e) {
         if (e.message.includes("did not revert")) {

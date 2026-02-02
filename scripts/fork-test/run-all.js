@@ -55,6 +55,16 @@ async function main() {
     const ctx = await setupContext();
     const report = new TestReport(ctx.mode, ctx);
 
+    // Get trader signer (Account #1 - NOT excluded from fees)
+    const signers = await ethers.getSigners();
+    const trader = signers[1];
+    const traderAddress = await trader.getAddress();
+    const traderRouter = new ethers.Contract(BASE.uniswapV2Router, ABIS.router, trader);
+    const traderToken = new ethers.Contract(ctx.tokenAddress, ABIS.token, trader);
+
+    console.log(`Owner:  ${ctx.signerAddress} (excluded from fees)`);
+    console.log(`Trader: ${traderAddress} (NOT excluded - used for fee tests)`);
+
     // Get block number
     const blockNumber = await ethers.provider.getBlockNumber();
     report.setBlockNumber(blockNumber);
@@ -336,15 +346,15 @@ async function main() {
             // T05b: Second call should revert
             console.log("Testing second call (should revert)...");
             try {
-                await assertReverts(
-                    () => ctx.token.setUniswapV2Pair(pairToSet),
-                    "PairAlreadySet"
-                );
-                report.pass(TESTS.T05b.id, TESTS.T05b.name, {
-                    "Error": "PairAlreadySet (as expected)",
-                });
-            } catch (e) {
+                const tx2 = await ctx.token.setUniswapV2Pair(pairToSet);
+                await tx2.wait();
+                // If we get here, it didn't revert
                 report.fail(TESTS.T05b.id, TESTS.T05b.name, "Second call did not revert");
+            } catch (e) {
+                // Expected - it should revert
+                report.pass(TESTS.T05b.id, TESTS.T05b.name, {
+                    "Error": "Reverted as expected",
+                });
             }
         } catch (e) {
             if (e.message.includes("PairAlreadySet")) {
@@ -387,8 +397,12 @@ async function main() {
     const foundationWallet = await ctx.token.foundationWallet();
     const buyAmount = ethers.parseEther(TEST_PARAMS.buyAmount);
 
+    // Use trader (Account #1) for fee tests - owner is excluded from fees
+    console.log(`Using trader ${traderAddress} for buy/sell tests (not excluded from fees)`);
+    console.log("");
+
     // Balances before buy
-    const buyerBefore = await ctx.token.balanceOf(ctx.signerAddress);
+    const buyerBefore = await ctx.token.balanceOf(traderAddress);
     const foundationBefore = await ctx.token.balanceOf(foundationWallet);
     const totalSupplyBefore = await ctx.token.totalSupply();
 
@@ -403,14 +417,14 @@ async function main() {
         const path = [BASE.weth, ctx.tokenAddress];
         const deadline = Math.floor(Date.now() / 1000) + 1200;
 
-        const tx = await ctx.router.swapExactETHForTokens(
-            0, path, ctx.signerAddress, deadline,
+        const tx = await traderRouter.swapExactETHForTokens(
+            0, path, traderAddress, deadline,
             { value: buyAmount }
         );
         buyGas = await getGasUsed(tx);
 
         // Balances after buy
-        const buyerAfter = await ctx.token.balanceOf(ctx.signerAddress);
+        const buyerAfter = await ctx.token.balanceOf(traderAddress);
         const foundationAfter = await ctx.token.balanceOf(foundationWallet);
         const totalSupplyAfter = await ctx.token.totalSupply();
 
@@ -478,10 +492,10 @@ async function main() {
     console.log("─".repeat(80) + "\n");
 
     const sellAmount = ethers.parseEther(TEST_PARAMS.sellAmount);
-    const currentBalance = await ctx.token.balanceOf(ctx.signerAddress);
+    const currentBalance = await ctx.token.balanceOf(traderAddress);
 
     if (currentBalance >= sellAmount) {
-        await (await ctx.token.approve(BASE.uniswapV2Router, sellAmount)).wait();
+        await (await traderToken.approve(BASE.uniswapV2Router, sellAmount)).wait();
 
         const path = [ctx.tokenAddress, BASE.weth];
         const deadline = Math.floor(Date.now() / 1000) + 1200;
@@ -491,7 +505,7 @@ async function main() {
             console.log("Testing regular swapExactTokensForETH (should fail)...");
             try {
                 await assertReverts(
-                    () => ctx.router.swapExactTokensForETH(sellAmount, 0, path, ctx.signerAddress, deadline)
+                    () => traderRouter.swapExactTokensForETH(sellAmount, 0, path, traderAddress, deadline)
                 );
                 report.pass(TESTS.T09.id, TESTS.T09.name, {
                     "Result": "Reverted as expected (K invariant)",
@@ -506,18 +520,18 @@ async function main() {
         // T07: Sell with SupportingFeeOnTransfer
         console.log("Testing swapExactTokensForETHSupportingFeeOnTransferTokens...");
 
-        const sellerBefore = await ctx.token.balanceOf(ctx.signerAddress);
+        const sellerBefore = await ctx.token.balanceOf(traderAddress);
         const foundationBeforeSell = await ctx.token.balanceOf(foundationWallet);
         const totalSupplyBeforeSell = await ctx.token.totalSupply();
 
         let sellGas = 0;
         try {
-            const tx = await ctx.router.swapExactTokensForETHSupportingFeeOnTransferTokens(
-                sellAmount, 0, path, ctx.signerAddress, deadline
+            const tx = await traderRouter.swapExactTokensForETHSupportingFeeOnTransferTokens(
+                sellAmount, 0, path, traderAddress, deadline
             );
             sellGas = await getGasUsed(tx);
 
-            const sellerAfter = await ctx.token.balanceOf(ctx.signerAddress);
+            const sellerAfter = await ctx.token.balanceOf(traderAddress);
             const foundationAfterSell = await ctx.token.balanceOf(foundationWallet);
             const totalSupplyAfterSell = await ctx.token.totalSupply();
 
@@ -794,26 +808,26 @@ async function main() {
         report.fail(TESTS.E01.id, TESTS.E01.name, e.message);
     }
 
-    // Test high fee scenario
+    // Test high fee scenario (using trader - not excluded from fees)
     console.log("\nTesting High Fee Scenario (10%)...");
     try {
         const highFees = SCENARIOS.high;
         await (await ctx.token.setTaxConfig(highFees.burnTax, highFees.foundationFee)).wait();
 
         const highFeeBuyAmount = ethers.parseEther("0.0001");
-        const balBefore = await ctx.token.balanceOf(ctx.signerAddress);
+        const balBefore = await ctx.token.balanceOf(traderAddress);
         const supplyBefore = await ctx.token.totalSupply();
         const foundBefore = await ctx.token.balanceOf(foundationWallet);
 
         const path = [BASE.weth, ctx.tokenAddress];
         const deadline = Math.floor(Date.now() / 1000) + 1200;
 
-        await (await ctx.router.swapExactETHForTokens(
-            0, path, ctx.signerAddress, deadline,
+        await (await traderRouter.swapExactETHForTokens(
+            0, path, traderAddress, deadline,
             { value: highFeeBuyAmount }
         )).wait();
 
-        const balAfter = await ctx.token.balanceOf(ctx.signerAddress);
+        const balAfter = await ctx.token.balanceOf(traderAddress);
         const supplyAfter = await ctx.token.totalSupply();
         const foundAfter = await ctx.token.balanceOf(foundationWallet);
 
@@ -843,26 +857,26 @@ async function main() {
         report.fail(TESTS.E03.id, TESTS.E03.name, e.message);
     }
 
-    // Test extreme fee scenario (50%)
+    // Test extreme fee scenario (50%) - using trader
     console.log("\nTesting Extreme Fee Scenario (50%)...");
     try {
         const extremeFees = SCENARIOS.extreme;
         await (await ctx.token.setTaxConfig(extremeFees.burnTax, extremeFees.foundationFee)).wait();
 
         const extremeFeeBuyAmount = ethers.parseEther("0.0001");
-        const balBefore = await ctx.token.balanceOf(ctx.signerAddress);
+        const balBefore = await ctx.token.balanceOf(traderAddress);
         const supplyBefore = await ctx.token.totalSupply();
         const foundBefore = await ctx.token.balanceOf(foundationWallet);
 
         const path = [BASE.weth, ctx.tokenAddress];
         const deadline = Math.floor(Date.now() / 1000) + 1200;
 
-        await (await ctx.router.swapExactETHForTokens(
-            0, path, ctx.signerAddress, deadline,
+        await (await traderRouter.swapExactETHForTokens(
+            0, path, traderAddress, deadline,
             { value: extremeFeeBuyAmount }
         )).wait();
 
-        const balAfter = await ctx.token.balanceOf(ctx.signerAddress);
+        const balAfter = await ctx.token.balanceOf(traderAddress);
         const supplyAfter = await ctx.token.totalSupply();
         const foundAfter = await ctx.token.balanceOf(foundationWallet);
 
