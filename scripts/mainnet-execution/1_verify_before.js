@@ -21,7 +21,7 @@
  */
 
 const { ethers } = require("hardhat");
-const { MAINNET, NETWORKS, printDisclaimer, verifyOwner } = require("../config");
+const { MAINNET, NETWORKS, printDisclaimer } = require("../config");
 
 const TOKEN_ABI = [
     "function name() view returns (string)",

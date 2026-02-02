@@ -1,0 +1,45 @@
+version: "3.8"
+
+services:
+  # Base mainnet fork node
+  fork:
+    image: node:20-alpine
+    working_dir: /app
+    volumes:
+      - .:/app
+      - node_modules:/app/node_modules
+    ports:
+      - "8545:8545"
+    environment:
+      - NODE_OPTIONS=--max-old-space-size=4096
+    command: >
+      sh -c "
+        echo 'Installing dependencies...' &&
+        npm install --silent &&
+        echo 'Starting Base mainnet fork...' &&
+        npx hardhat node --fork https://mainnet.base.org --hostname 0.0.0.0
+      "
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q --spider http://localhost:8545 || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 60s
+
+  # Test runner (for running scripts)
+  test:
+    image: node:20-alpine
+    working_dir: /app
+    volumes:
+      - .:/app
+      - node_modules:/app/node_modules
+    environment:
+      - ADMIN_KEY=${ADMIN_KEY:-}
+    depends_on:
+      fork:
+        condition: service_healthy
+    profiles:
+      - test
+
+volumes:
+  node_modules:

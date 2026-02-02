@@ -3,6 +3,20 @@
  * AQUARI FEE ENABLEMENT - CONFIGURATION
  * =============================================================================
  *
+ * FOLDER STRUCTURE:
+ * ─────────────────────────────────────────────────────────────────────────────
+ *
+ *   scripts/
+ *   ├── config.js              # THIS FILE - config for simulation & mainnet
+ *   ├── simulation/            # Step-by-step SCRIPTED testing (isolated)
+ *   │   └── 0_deploy → 6_verify (run in order, scripted trades)
+ *   ├── mainnet-execution/     # PRODUCTION scripts (real mainnet!)
+ *   │   └── 1_verify → 4_verify (run in order, careful!)
+ *   └── fork-test/             # AUTOMATED test suite (separate config)
+ *       └── run-all.js --mainnet | --simulate
+ *
+ * ─────────────────────────────────────────────────────────────────────────────
+ *
  * ⚠️  DISCLAIMER ⚠️
  * ─────────────────────────────────────────────────────────────────────────────
  * These scripts interact with smart contracts on blockchain.
